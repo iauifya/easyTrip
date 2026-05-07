@@ -2,7 +2,9 @@
 
 EasyTrip is a calm travel-planning MVP for travelers who want a clearer daily itinerary without turning trip planning into spreadsheet work. It helps people create trips, organize day-by-day stops, spot tight schedules, and switch into a focused "today mode" while traveling.
 
-> Portfolio status: MVP complete, deployment-ready. Demo URL can be added after the Vercel project is linked.
+> Portfolio status: MVP complete and deployed.
+
+Live demo: [https://easy-trip-chi.vercel.app/](https://easy-trip-chi.vercel.app/)
 
 ## Product Positioning
 
@@ -42,7 +44,7 @@ The project intentionally keeps the MVP local-first with mock data and `localSto
 
 Use this sequence when presenting the project:
 
-1. Open `/` to show the current trip dashboard and next-stop summary.
+1. Open [the live demo](https://easy-trip-chi.vercel.app/) to show the current trip dashboard and next-stop summary.
 2. Open `/trips` to show multiple saved trips and entry points.
 3. Open `/trips/new` to create a new trip with validated dates and pace.
 4. Open `/trips/trip-taipei-weekend/day/day-1` to edit the sample itinerary.
@@ -89,7 +91,11 @@ Current local verification:
 
 ## Deployment
 
-This project is ready for Vercel's standard Next.js deployment flow. Vercel supports zero-configuration deployment for Next.js projects, and the CLI deploy command can be run from the project root.
+This project is deployed on Vercel:
+
+[https://easy-trip-chi.vercel.app/](https://easy-trip-chi.vercel.app/)
+
+Vercel supports zero-configuration deployment for Next.js projects, and the CLI deploy command can be run from the project root.
 
 Recommended Git-based deployment:
 

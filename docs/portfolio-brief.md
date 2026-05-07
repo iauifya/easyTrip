@@ -4,6 +4,8 @@
 
 EasyTrip is a responsive travel-planning MVP that helps users create trips, organize daily stops, catch tight schedules, and focus on the next stop during travel.
 
+Live demo: [https://easy-trip-chi.vercel.app/](https://easy-trip-chi.vercel.app/)
+
 ## Case Study Summary
 
 I built EasyTrip as a local-first MVP for short city trips. The product goal was to reduce planning friction without overwhelming the traveler with a heavy planning interface. The app uses a calm visual system, clear itinerary states, and time-aware helpers to keep the user oriented.
@@ -34,6 +36,7 @@ The UI is intentionally quiet: restrained colors, compact cards, clear hierarchy
 - `npm run test -- --run`: 30 tests passing
 - `npm run lint`: passing
 - `npm run build`: passing
+- Production deployment: [https://easy-trip-chi.vercel.app/](https://easy-trip-chi.vercel.app/)
 
 ## Next Iteration
 
