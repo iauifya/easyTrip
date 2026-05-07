@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+:root {
+  --color-surface: #f7faf8;
+  --color-ink: #17312f;
+  --color-muted: #66716f;
+  --color-teal: #087b78;
+  --color-mist: #e7f2ee;
+  --color-sun: #f4c95d;
+  --color-line: #dce7e3;
+  --color-danger: #b42318;
+  --color-warn: #fff3cd;
+  --color-warn-ink: #6f4e00;
+  --color-warn-line: #f4d27a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--color-surface);
+  overflow-x: hidden;
+}
+
+body {
+  margin: 0;
+  font-family:
+    "Aptos",
+    "Noto Sans TC",
+    "Microsoft JhengHei",
+    system-ui,
+    sans-serif;
+  overflow-x: hidden;
+  text-wrap: pretty;
+}
+
+a,
+button,
+h1,
+h2,
+h3,
+p,
+span {
+  overflow-wrap: anywhere;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
