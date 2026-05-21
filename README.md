@@ -1,31 +1,38 @@
 # EasyTrip
 
-EasyTrip is a calm travel-planning MVP for travelers who want a clearer daily itinerary without turning trip planning into spreadsheet work. It helps people create trips, organize day-by-day stops, spot tight schedules, and switch into a focused "today mode" while traveling.
+EasyTrip is a local-first travel planner for short city trips. It helps travelers create trips, organize day-by-day stops, preview route movement, and switch into a focused Today Mode while traveling.
 
-> Portfolio status: MVP complete and deployed.
+## Current Status
 
-Live demo: [https://easy-trip-chi.vercel.app/](https://easy-trip-chi.vercel.app/)
+Phase 2 is implemented locally:
 
-## Product Positioning
+- Taiwanese-inspired visual language for the single-day itinerary page
+- Mobile bottom sheet editing for itinerary stops
+- Upgraded `Place` model with Google Maps URL, place id, coordinates, address, and source metadata
+- Google Maps URL preview and short-link resolution
+- `RoutePreview` component with route status, Google Maps directions link, and Routes API estimates
+- Routes API walking time and distance estimates between adjacent stops
+- Upgraded Today Mode with next-stop focus, progress, reminders, and movement time
+- RWD hardening and test pass
 
-EasyTrip is designed as a soft utility: practical, quiet, and reassuring. Instead of optimizing for maximum information density, the interface emphasizes the next useful action: where the traveler is going next, whether the day feels too packed, and what can be edited quickly.
+Existing demo:
 
-Target users:
-- Independent travelers planning short city trips
-- People who want time-aware itineraries without complex travel software
-- Portfolio reviewers looking for a complete frontend MVP with state, forms, validation, persistence, responsive UI, and tests
+[https://easy-trip-chi.vercel.app/](https://easy-trip-chi.vercel.app/)
 
 ## Core Features
 
-- Trip list with selected trip state
+- Trip list with selected-trip state
 - Create trip flow with date range validation
 - Day-by-day itinerary planner
 - Add, edit, and delete itinerary items
-- Time helpers for stay duration, sorting, next stop, and tight-gap warnings
-- Today mode for current-day travel focus
+- Google Maps URL based place source
+- Google Maps place preview in the editor
+- Route preview for daily movement
+- Routes API travel time and distance estimates
+- Today Mode for current-day travel focus
 - Local persistence through `localStorage`
-- Responsive layouts for mobile and desktop
-- Unit tests for trip creation, itinerary timing, day insights, suggestions, and storage
+- Responsive layouts for mobile, tablet, and desktop
+- Unit tests for trip creation, itinerary timing, storage, route helpers, and Google Maps helpers
 
 ## Tech Stack
 
@@ -37,19 +44,9 @@ Target users:
 - React Hook Form
 - Zod
 - Vitest
+- Google Maps Platform: Places API and Routes API
 
-The project intentionally keeps the MVP local-first with mock data and `localStorage`. API-backed data, map integrations, and route estimates are planned as follow-up work.
-
-## Demo Flow
-
-Use this sequence when presenting the project:
-
-1. Open [the live demo](https://easy-trip-chi.vercel.app/) to show the current trip dashboard and next-stop summary.
-2. Open `/trips` to show multiple saved trips and entry points.
-3. Open `/trips/new` to create a new trip with validated dates and pace.
-4. Open `/trips/trip-taipei-weekend/day/day-1` to edit the sample itinerary.
-5. Add a stop with a short gap to show schedule warnings.
-6. Open `/trips/trip-taipei-weekend/today` when the sample trip date matches today, or explain the empty state when it does not.
+The app is still local-first. Trip data is stored in `localStorage`; the API routes are used only for Google Maps URL resolution and route estimates.
 
 ## Routes
 
@@ -59,12 +56,32 @@ Use this sequence when presenting the project:
 /trips/new
 /trips/:tripId/day/:dayId
 /trips/:tripId/today
+/api/places/resolve
+/api/routes/estimate
 ```
 
 ## Getting Started
 
+Install dependencies:
+
 ```bash
 npm install
+```
+
+Create `.env.local`:
+
+```env
+GOOGLE_MAPS_API_KEY=your_google_maps_key
+```
+
+The Google Cloud project should enable:
+
+- Places API (New)
+- Routes API
+
+Run the app:
+
+```bash
 npm run dev
 ```
 
@@ -73,6 +90,26 @@ Then open:
 ```text
 http://localhost:3000
 ```
+
+## Google Maps Behavior
+
+EasyTrip treats a Google Maps URL as the main place source.
+
+When a user pastes a Google Maps URL, the app tries to resolve:
+
+- Google place id
+- formatted address
+- latitude and longitude
+- canonical Google Maps URL
+
+Route estimates use the strongest available data in this order:
+
+1. Google place id
+2. Places API location
+3. exact coordinates from the Google Maps URL
+4. text address or place title
+
+This keeps route estimates from drifting to a similarly named place when old or incomplete address data exists.
 
 ## Quality Checks
 
@@ -84,90 +121,78 @@ npm run build
 
 Current local verification:
 
-- Vitest: 7 test files, 30 tests passing
+- Vitest: 11 files, 53 tests passing
 - ESLint: passing
 - Next production build: passing
-- RWD smoke check: mobile and desktop layouts checked for horizontal overflow during Phase 6
+- Route smoke checks: `/`, `/trips`, `/trips/new`, day page, and Today Mode return HTTP 200 locally
 
 ## Deployment
 
-This project is deployed on Vercel:
+This is a standard Next.js app and can be deployed to Vercel.
 
-[https://easy-trip-chi.vercel.app/](https://easy-trip-chi.vercel.app/)
-
-Vercel supports zero-configuration deployment for Next.js projects, and the CLI deploy command can be run from the project root.
-
-Recommended Git-based deployment:
+Recommended deployment:
 
 1. Push the repository to GitHub.
 2. Import the repository in Vercel.
-3. Keep the default framework preset as Next.js.
-4. Use the default install and build commands:
+3. Keep the framework preset as Next.js.
+4. Add `GOOGLE_MAPS_API_KEY` in Vercel Project Settings > Environment Variables.
+5. Enable Places API (New) and Routes API for that key in Google Cloud.
+6. Deploy.
+
+Build settings:
 
 ```text
-npm install
-npm run build
+Install Command: npm install
+Build Command: npm run build
+Output: Next.js default
 ```
 
-CLI deployment option:
+CLI deployment:
 
 ```bash
 vercel
 vercel deploy --prod
 ```
 
-References:
+Do not commit `.env.local`; it is already ignored by `.gitignore`.
 
-- [Next.js on Vercel](https://vercel.com/docs/concepts/next.js/overview)
-- [Vercel CLI deploy](https://vercel.com/docs/cli/deploy)
-- [Deploying from the CLI](https://vercel.com/docs/projects/deploy-from-cli)
+## Demo Flow
 
-## Portfolio Notes
+Use this sequence when presenting:
 
-Problem:
-
-Trip planning often starts clear but becomes messy once timing, gaps, and day-by-day edits enter the picture. EasyTrip focuses on the moment when the traveler needs a practical plan, not a giant planning board.
-
-Product decisions:
-
-- Local-first MVP to keep the first version fast and demoable
-- Form validation with Zod to protect trip and time data
-- Separate domain helpers for timing and insight logic so the UI stays readable
-- Responsive layouts that prioritize clear actions on mobile
-- Tests around scheduling logic and persistence because those are the highest-risk areas
-
-What this project demonstrates:
-
-- Building a complete TypeScript frontend MVP from a product plan
-- Translating UX goals into concrete routes and UI states
-- Managing client state and persistence without backend complexity
-- Writing focused tests around business logic
-- Preparing a project for deployment and portfolio review
-
-## Roadmap
-
-- Add real map and place search integration
-- Google Maps URL auto-fill can resolve short links and use them as the primary place source.
-- Route duration estimates use Google Routes API through `GOOGLE_MAPS_API_KEY`; enable Routes API in Google Cloud for real travel times.
-- Add route duration estimates between stops
-- Add drag-and-drop itinerary ordering
-- Add cloud sync and authenticated trips
-- Add shareable itinerary links
-- Add Playwright E2E once browser binaries are available in CI
-- Add API mocks with MSW before introducing a backend
+1. Open `/` to show the selected trip dashboard and next-stop summary.
+2. Open `/trips` to show saved trips and entry points.
+3. Open `/trips/new` to create a new trip.
+4. Open `/trips/trip-taipei-weekend/day/day-1` to edit a sample day.
+5. Paste a Google Maps URL into a stop and save it.
+6. Review RoutePreview movement estimates.
+7. Open `/trips/:tripId/today` when the trip has a day matching the current date.
 
 ## Project Structure
 
 ```text
 src/
   app/
+    api/
+    trips/
   components/
   data/
   lib/
     itinerary/
+    places/
+    routes/
     storage/
     time/
     trips/
+    ui/
   store/
   types/
 ```
+
+## Roadmap
+
+- Add cloud sync and authenticated trips
+- Add shareable itinerary links
+- Add drag-and-drop itinerary ordering
+- Add route estimate caching to reduce Google Maps Platform usage
+- Add Playwright E2E once browser automation is available in CI
