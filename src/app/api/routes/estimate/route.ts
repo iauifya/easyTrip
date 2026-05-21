@@ -34,6 +34,11 @@ type EstimateRequestBody = {
   stops?: RouteEstimateStop[];
 };
 
+type LocationBias = {
+  lat?: number;
+  lng?: number;
+};
+
 function hasUsableStop(stop: RouteEstimateStop) {
   return Boolean(
     stop.googlePlaceId ||
@@ -44,35 +49,107 @@ function hasUsableStop(stop: RouteEstimateStop) {
   );
 }
 
-async function resolveGoogleMapsStop(stop: RouteEstimateStop): Promise<RouteEstimateStop> {
-  if (
-    stop.googlePlaceId ||
-    (typeof stop.lat === "number" && typeof stop.lng === "number") ||
-    !stop.googleMapsUrl ||
-    !isGoogleMapsUrl(stop.googleMapsUrl)
-  ) {
-    return stop;
+function getLocationBias(value: LocationBias): LocationBias | undefined {
+  if (typeof value.lat === "number" && typeof value.lng === "number") {
+    return {
+      lat: value.lat,
+      lng: value.lng,
+    };
   }
 
+  return undefined;
+}
+
+function findNearbyLocationBias(stops: RouteEstimateStop[], index: number) {
+  for (let offset = 1; offset < stops.length; offset += 1) {
+    const previous = stops[index - offset];
+    const next = stops[index + offset];
+    const previousBias = previous ? getLocationBias(previous) : undefined;
+    const nextBias = next ? getLocationBias(next) : undefined;
+
+    if (previousBias) {
+      return previousBias;
+    }
+
+    if (nextBias) {
+      return nextBias;
+    }
+  }
+
+  return undefined;
+}
+
+function findNearbyCityContext(stops: RouteEstimateStop[], index: number) {
+  for (let offset = 1; offset < stops.length; offset += 1) {
+    const nearbyStops = [stops[index - offset], stops[index + offset]].filter(Boolean);
+
+    for (const stop of nearbyStops) {
+      const city = stop.address?.match(/[\u4e00-\u9fa5]{2,3}[市縣]/)?.[0];
+
+      if (city) {
+        return city;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function hasRouteResolvableLocation(stop: RouteEstimateStop) {
+  return hasExactRouteLocation(stop) || Boolean(stop.googleMapsUrl && getWaypointQuery(stop));
+}
+
+async function resolveRedirectedGoogleMapsUrl(url: string) {
   try {
-    const response = await fetch(stop.googleMapsUrl, {
+    const response = await fetch(url, {
       redirect: "follow",
       cache: "no-store",
     });
-    const parsedUrl = parseGoogleMapsUrl(response.url || stop.googleMapsUrl);
-    const resolvedName = parsedUrl?.placeName || parsedUrl?.query || getWaypointQuery(stop);
-    const place = resolvedName ? await searchPlaceForRoute(resolvedName, parsedUrl) : undefined;
 
-    return {
-      ...stop,
-      address: place?.address ?? stop.address,
-      googlePlaceId: place?.googlePlaceId ?? parsedUrl?.googlePlaceId ?? stop.googlePlaceId,
-      lat: place?.lat ?? parsedUrl?.lat ?? stop.lat,
-      lng: place?.lng ?? parsedUrl?.lng ?? stop.lng,
-    };
+    return response.url || url;
   } catch {
+    return url;
+  }
+}
+
+async function resolveGoogleMapsStop(
+  stop: RouteEstimateStop,
+  locationBias?: LocationBias,
+  cityContext?: string,
+): Promise<RouteEstimateStop> {
+  if (hasExactRouteLocation(stop)) {
     return stop;
   }
+
+  const resolvedUrl =
+    stop.googleMapsUrl && isGoogleMapsUrl(stop.googleMapsUrl)
+      ? await resolveRedirectedGoogleMapsUrl(stop.googleMapsUrl)
+      : undefined;
+  const parsedUrl = resolvedUrl ? parseGoogleMapsUrl(resolvedUrl) : undefined;
+  const parsedLocationBias = getLocationBias(parsedUrl ?? stop);
+  const resolvedName = parsedUrl?.placeName || parsedUrl?.query || stop.title || getWaypointQuery(stop);
+  const contextualQuery =
+    resolvedName && cityContext && !resolvedName.includes(cityContext)
+      ? `${resolvedName} ${cityContext}`
+      : resolvedName;
+  const place = contextualQuery
+    ? await searchPlaceForRoute(contextualQuery, parsedLocationBias ?? locationBias)
+    : undefined;
+
+  if (!place && !parsedUrl) {
+    return {
+      ...stop,
+      address: stop.address || contextualQuery || undefined,
+    };
+  }
+
+  return {
+    ...stop,
+    address: place?.address ?? (cityContext ? contextualQuery : stop.address) ?? stop.address ?? contextualQuery,
+    googlePlaceId: place?.googlePlaceId ?? parsedUrl?.googlePlaceId ?? stop.googlePlaceId,
+    lat: place?.lat ?? parsedUrl?.lat ?? stop.lat,
+    lng: place?.lng ?? parsedUrl?.lng ?? stop.lng,
+  };
 }
 
 async function searchPlaceForRoute(
@@ -103,7 +180,7 @@ async function searchPlaceForRoute(
                   latitude: locationBias.lat,
                   longitude: locationBias.lng,
                 },
-                radius: 120,
+                radius: 3500,
               },
             },
           }
@@ -211,12 +288,23 @@ export async function POST(request: Request) {
     } satisfies RouteEstimatesResponse);
   }
 
-  const resolvedStops = await Promise.all(stops.map(resolveGoogleMapsStop));
+  const initiallyResolvedStops = await Promise.all(stops.map((stop) => resolveGoogleMapsStop(stop)));
+  const resolvedStops = await Promise.all(
+    initiallyResolvedStops.map((stop, index) =>
+      hasExactRouteLocation(stop)
+        ? stop
+        : resolveGoogleMapsStop(
+            stop,
+            findNearbyLocationBias(initiallyResolvedStops, index),
+            findNearbyCityContext(initiallyResolvedStops, index),
+          ),
+    ),
+  );
   const legResults = await Promise.all(
     resolvedStops.slice(0, -1).map(async (stop, index) => {
       const nextStop = resolvedStops[index + 1];
 
-      if (!hasExactRouteLocation(stop) || !hasExactRouteLocation(nextStop)) {
+      if (!hasRouteResolvableLocation(stop) || !hasRouteResolvableLocation(nextStop)) {
         return {
           estimate: undefined,
           unavailableLeg: createUnavailableLeg(stop, nextStop, "invalid_place"),
