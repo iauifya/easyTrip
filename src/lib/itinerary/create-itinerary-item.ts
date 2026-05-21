@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { timeToMinutes } from "../time/itinerary";
-import { createGoogleMapsPreview, isGoogleMapsUrl } from "@/lib/places/google-maps";
+import {
+  createGoogleMapsPreview,
+  createGoogleMapsSearchUrl,
+  isGoogleMapsUrl,
+  parseGoogleMapsUrl,
+} from "@/lib/places/google-maps";
 import type { ItineraryItem, Place } from "@/types/trip";
 
 const googleMapsUrlSchema = z
@@ -53,6 +58,17 @@ function createPlaceFromInput(
     lng: input.lng,
   });
   const hasGoogleMapsUrl = Boolean(input.googleMapsUrl?.trim());
+  const parsedGoogleMapsUrl = input.googleMapsUrl ? parseGoogleMapsUrl(input.googleMapsUrl) : undefined;
+  const hasResolvedPlaceDetails = Boolean(
+    input.googlePlaceId ||
+      (typeof input.lat === "number" && typeof input.lng === "number") ||
+      input.address?.trim(),
+  );
+  const shouldUseSearchUrlFallback =
+    hasGoogleMapsUrl && !hasResolvedPlaceDetails && !parsedGoogleMapsUrl?.query && !parsedGoogleMapsUrl?.placeName;
+  const fallbackGoogleMapsUrl = shouldUseSearchUrlFallback
+    ? createGoogleMapsSearchUrl(input.title)
+    : mapsPreview?.googleMapsUrl;
 
   return {
     ...existingPlace,
@@ -63,7 +79,7 @@ function createPlaceFromInput(
     lat: hasGoogleMapsUrl ? input.lat : input.lat ?? existingPlace?.lat,
     lng: hasGoogleMapsUrl ? input.lng : input.lng ?? existingPlace?.lng,
     googlePlaceId: input.googlePlaceId || mapsPreview?.googlePlaceId || existingPlace?.googlePlaceId,
-    googleMapsUrl: mapsPreview?.googleMapsUrl,
+    googleMapsUrl: fallbackGoogleMapsUrl,
     mapPreviewUrl: mapsPreview?.mapPreviewUrl,
     source: mapsPreview?.source ?? existingPlace?.source ?? "manual",
     averageStayMinutes: timeToMinutes(input.endTime) - timeToMinutes(input.startTime),

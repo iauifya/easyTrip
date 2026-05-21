@@ -137,4 +137,20 @@ describe("create itinerary item helpers", () => {
     expect(item.place?.lat).toBeUndefined();
     expect(item.place?.lng).toBeUndefined();
   });
+
+  it("falls back to a searchable Google Maps URL when a short link cannot be resolved", () => {
+    const item = createItineraryItemFromInput({
+      title: "龍山寺",
+      type: "attraction",
+      startTime: "20:00",
+      endTime: "21:30",
+      address: "",
+      googleMapsUrl: "https://maps.app.goo.gl/LbNj3DxJd5tXCLabA",
+      note: "",
+    });
+
+    expect(item.place?.googleMapsUrl).toBe(
+      "https://www.google.com/maps/search/?api=1&query=%E9%BE%8D%E5%B1%B1%E5%AF%BA",
+    );
+  });
 });
