@@ -79,12 +79,17 @@ function findNearbyLocationBias(stops: RouteEstimateStop[], index: number) {
   return undefined;
 }
 
-function findNearbyCityContext(stops: RouteEstimateStop[], index: number) {
+function findNearbyAddressContext(stops: RouteEstimateStop[], index: number) {
   for (let offset = 1; offset < stops.length; offset += 1) {
     const nearbyStops = [stops[index - offset], stops[index + offset]].filter(Boolean);
 
     for (const stop of nearbyStops) {
+      const district = stop.address?.match(/[\u4e00-\u9fa5]{2,3}市[\u4e00-\u9fa5]{1,4}區/)?.[0];
       const city = stop.address?.match(/[\u4e00-\u9fa5]{2,3}[市縣]/)?.[0];
+
+      if (district) {
+        return district;
+      }
 
       if (city) {
         return city;
@@ -115,7 +120,7 @@ async function resolveRedirectedGoogleMapsUrl(url: string) {
 async function resolveGoogleMapsStop(
   stop: RouteEstimateStop,
   locationBias?: LocationBias,
-  cityContext?: string,
+  addressContext?: string,
 ): Promise<RouteEstimateStop> {
   if (hasExactRouteLocation(stop)) {
     return stop;
@@ -129,8 +134,8 @@ async function resolveGoogleMapsStop(
   const parsedLocationBias = getLocationBias(parsedUrl ?? stop);
   const resolvedName = parsedUrl?.placeName || parsedUrl?.query || stop.title || getWaypointQuery(stop);
   const contextualQuery =
-    resolvedName && cityContext && !resolvedName.includes(cityContext)
-      ? `${resolvedName} ${cityContext}`
+    resolvedName && addressContext && !resolvedName.includes(addressContext)
+      ? `${resolvedName} ${addressContext}`
       : resolvedName;
   const place = contextualQuery
     ? await searchPlaceForRoute(contextualQuery, parsedLocationBias ?? locationBias)
@@ -145,7 +150,7 @@ async function resolveGoogleMapsStop(
 
   return {
     ...stop,
-    address: place?.address ?? (cityContext ? contextualQuery : stop.address) ?? stop.address ?? contextualQuery,
+    address: place?.address ?? (addressContext ? contextualQuery : stop.address) ?? stop.address ?? contextualQuery,
     googlePlaceId: place?.googlePlaceId ?? parsedUrl?.googlePlaceId ?? stop.googlePlaceId,
     lat: place?.lat ?? parsedUrl?.lat ?? stop.lat,
     lng: place?.lng ?? parsedUrl?.lng ?? stop.lng,
@@ -296,7 +301,7 @@ export async function POST(request: Request) {
         : resolveGoogleMapsStop(
             stop,
             findNearbyLocationBias(initiallyResolvedStops, index),
-            findNearbyCityContext(initiallyResolvedStops, index),
+            findNearbyAddressContext(initiallyResolvedStops, index),
           ),
     ),
   );
