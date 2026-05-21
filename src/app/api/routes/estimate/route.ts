@@ -3,6 +3,7 @@ import { getGoogleMapsApiKey } from "@/lib/google-maps-platform";
 import { isGoogleMapsUrl, parseGoogleMapsUrl } from "@/lib/places/google-maps";
 import {
   createRoutesApiWaypoint,
+  getWaypointQuery,
   hasExactRouteLocation,
   parseGoogleDurationSeconds,
   secondsToRoundedMinutes,
@@ -21,6 +22,7 @@ type RoutesApiResponse = {
 type TextSearchResponse = {
   places?: Array<{
     id?: string;
+    formattedAddress?: string;
     location?: {
       latitude?: number;
       longitude?: number;
@@ -58,12 +60,12 @@ async function resolveGoogleMapsStop(stop: RouteEstimateStop): Promise<RouteEsti
       cache: "no-store",
     });
     const parsedUrl = parseGoogleMapsUrl(response.url || stop.googleMapsUrl);
-    const resolvedName = parsedUrl?.placeName || parsedUrl?.query;
+    const resolvedName = parsedUrl?.placeName || parsedUrl?.query || getWaypointQuery(stop);
     const place = resolvedName ? await searchPlaceForRoute(resolvedName, parsedUrl) : undefined;
 
     return {
       ...stop,
-      address: resolvedName || stop.address,
+      address: place?.address ?? stop.address,
       googlePlaceId: place?.googlePlaceId ?? parsedUrl?.googlePlaceId ?? stop.googlePlaceId,
       lat: place?.lat ?? parsedUrl?.lat ?? stop.lat,
       lng: place?.lng ?? parsedUrl?.lng ?? stop.lng,
@@ -76,7 +78,7 @@ async function resolveGoogleMapsStop(stop: RouteEstimateStop): Promise<RouteEsti
 async function searchPlaceForRoute(
   query: string,
   locationBias?: { lat?: number; lng?: number },
-): Promise<Pick<RouteEstimateStop, "googlePlaceId" | "lat" | "lng"> | undefined> {
+): Promise<Pick<RouteEstimateStop, "address" | "googlePlaceId" | "lat" | "lng"> | undefined> {
   const apiKey = getGoogleMapsApiKey();
 
   if (!apiKey) {
@@ -88,7 +90,7 @@ async function searchPlaceForRoute(
     headers: {
       "Content-Type": "application/json",
       "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask": "places.id,places.location",
+      "X-Goog-FieldMask": "places.id,places.formattedAddress,places.location",
     },
     body: JSON.stringify({
       textQuery: query,
@@ -122,6 +124,7 @@ async function searchPlaceForRoute(
   }
 
   return {
+    address: place.formattedAddress,
     googlePlaceId: place.id,
     lat: place.location?.latitude,
     lng: place.location?.longitude,
