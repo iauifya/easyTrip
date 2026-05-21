@@ -147,6 +147,8 @@ What this project demonstrates:
 ## Roadmap
 
 - Add real map and place search integration
+- Google Maps URL auto-fill can resolve short links and use them as the primary place source.
+- Route duration estimates use Google Routes API through `GOOGLE_MAPS_API_KEY`; enable Routes API in Google Cloud for real travel times.
 - Add route duration estimates between stops
 - Add drag-and-drop itinerary ordering
 - Add cloud sync and authenticated trips

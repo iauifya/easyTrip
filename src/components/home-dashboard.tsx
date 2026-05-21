@@ -11,6 +11,12 @@ import {
 } from "@/lib/itinerary/day-insights";
 import { getSortedItems } from "@/lib/time/itinerary";
 import { getTodayTripDay, getTripDayStatus } from "@/lib/trips/today";
+import {
+  taiwanButton,
+  taiwanPrimaryButton,
+  taiwanTilePattern,
+  taiwanWindowPattern,
+} from "@/lib/ui/taiwan-style";
 
 export function HomeDashboard() {
   const [currentTime, setCurrentTime] = useState(() => getCurrentTimeString());
@@ -59,16 +65,16 @@ export function HomeDashboard() {
 
   if (!trip || !selectedDay) {
     return (
-      <main className="grid min-h-screen place-items-center bg-[var(--color-surface)] px-5 text-[var(--color-ink)]">
-        <section className="max-w-md rounded-lg bg-white p-6 text-center shadow-sm">
-          <p className="text-sm font-semibold text-[var(--color-teal)]">EasyTrip</p>
-          <h1 className="mt-3 text-2xl font-bold">還沒有旅程</h1>
-          <p className="mt-3 text-[var(--color-muted)]">
+      <main className="grid min-h-screen place-items-center bg-[#f6f3ea] px-5 text-[#183833]">
+        <section className="border-2 border-[#183833] bg-[#fffdf7] p-6 text-center shadow-[8px_8px_0_#1a5b4f]">
+          <p className="text-sm font-black tracking-[0.2em] text-[#b43c2f]">EasyTrip</p>
+          <h1 className="mt-3 text-2xl font-black">還沒有旅程</h1>
+          <p className="mt-3 text-[#53635f]">
             建立第一趟旅程後，這裡會顯示行程路線。
           </p>
           <Link
             href="/trips"
-            className="mt-5 inline-flex rounded-md bg-[var(--color-ink)] px-4 py-2 text-sm font-bold text-white"
+            className={`${taiwanPrimaryButton} mt-5`}
           >
             前往旅程列表
           </Link>
@@ -78,85 +84,89 @@ export function HomeDashboard() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--color-surface)] text-[var(--color-ink)]">
-      <section className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 py-6 sm:px-8 lg:px-10">
-        <header className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+    <main className="min-h-screen bg-[#f6f3ea] text-[#183833]">
+      <section className="relative overflow-hidden bg-[#fbf8f0]">
+        <div className="absolute inset-0 opacity-80" style={taiwanWindowPattern} />
+        <div className="relative mx-auto flex min-h-screen w-full max-w-[88rem] flex-col px-5 py-6 sm:px-8 lg:px-10">
+        <header className="flex flex-col items-start justify-between gap-4 border-b-2 border-[#1a5b4f] pb-5 sm:flex-row sm:items-center">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-[var(--color-teal)]">EasyTrip</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-normal sm:text-5xl">{trip.title}</h1>
+            <p className="text-sm font-black tracking-[0.24em] text-[#b43c2f]">EASYTRIP</p>
+            <h1 className="mt-2 text-4xl font-black leading-tight tracking-normal sm:text-6xl">{trip.title}</h1>
           </div>
           <Link
             href="/trips"
-            className="inline-flex min-h-10 w-full items-center justify-center rounded-md bg-white px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-[var(--color-mist)] sm:w-auto"
+            className={`${taiwanButton} w-full sm:w-auto`}
           >
             所有旅程
           </Link>
         </header>
 
         <div className="grid flex-1 gap-5 py-8 lg:grid-cols-[1fr_380px] lg:items-center">
-          <section className="rounded-lg bg-white p-5 shadow-sm sm:p-7">
+          <section className="border-2 border-[#183833] bg-[#fffdf7] p-5 shadow-[8px_8px_0_#1a5b4f] sm:p-7">
             <div className="flex flex-col items-start justify-between gap-5 sm:flex-row">
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-[var(--color-muted)]">下一站</p>
-                <h2 className="mt-2 text-3xl font-bold">{statusTitle}</h2>
-                <p className="mt-3 max-w-xl text-base leading-7 text-[var(--color-muted)]">
+                <p className="text-sm font-black text-[#1a5b4f]">下一站</p>
+                <h2 className="mt-2 text-3xl font-black leading-tight sm:text-5xl">{statusTitle}</h2>
+                <p className="mt-3 max-w-xl text-base leading-7 text-[#53635f]">
                   {statusMessage}
                 </p>
               </div>
-              <span className="w-fit rounded-md bg-[var(--color-sun)] px-4 py-2 text-sm font-bold">
+              <span className="w-fit rotate-[-4deg] border-2 border-[#b43c2f] px-4 py-2 text-sm font-black text-[#b43c2f]">
                 {statusLabel}
               </span>
             </div>
             {dayWarnings.length > 0 ? (
-              <div className="mt-5 rounded-lg border border-[var(--color-warn-line)] bg-[var(--color-warn)] p-4 text-[var(--color-warn-ink)]">
-                <p className="text-sm font-bold">這天可能有點趕</p>
+              <div className="mt-5 border-2 border-[#d9b75f] bg-[#fff7d8] p-4 text-[#6f4e00] shadow-[4px_4px_0_#d8cbb6]">
+                <p className="text-sm font-black">這天可能有點趕</p>
                 <p className="mt-1 text-sm leading-6">{dayWarnings[0].message}</p>
               </div>
             ) : (
-              <div className="mt-5 rounded-lg border border-[var(--color-line)] bg-[var(--color-mist)] p-4">
-                <p className="text-sm font-bold text-[var(--color-teal)]">這天的節奏看起來穩定</p>
-                <p className="mt-1 text-sm leading-6 text-[var(--color-muted)]">
+              <div className="mt-5 border-2 border-[#1a5b4f] bg-[#e9efe7] p-4 shadow-[4px_4px_0_#d8cbb6]">
+                <p className="text-sm font-black text-[#1a5b4f]">這天的節奏看起來穩定</p>
+                <p className="mt-1 text-sm leading-6 text-[#53635f]">
                   目前沒有偵測到過短間隔或過滿安排。
                 </p>
               </div>
             )}
             <Link
               href={`/trips/${trip.id}/day/${selectedDay.id}`}
-              className="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-[var(--color-ink)] px-4 py-3 text-sm font-bold text-white transition hover:bg-[var(--color-teal)] sm:w-auto"
+              className={`${taiwanPrimaryButton} mt-6 w-full sm:w-auto`}
             >
               編輯這一天
             </Link>
             {todayDay ? (
               <Link
                 href={`/trips/${trip.id}/today`}
-                className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-md border border-[var(--color-line)] px-4 py-3 text-sm font-bold transition hover:border-[var(--color-teal)] hover:text-[var(--color-teal)] sm:ml-3 sm:mt-6 sm:w-auto"
+                className={`${taiwanButton} mt-3 w-full sm:ml-3 sm:mt-6 sm:w-auto`}
               >
                 開啟今日模式
               </Link>
             ) : null}
 
-            <div className="mt-8 grid border-t border-[var(--color-line)] pt-5 sm:grid-cols-3">
-              <div className="border-b border-[var(--color-line)] py-4 sm:border-b-0 sm:border-r sm:pr-5">
-                <p className="text-sm text-[var(--color-muted)]">目前時間</p>
-                <p className="mt-1 text-2xl font-bold">{currentTime}</p>
+            <div className="mt-8 grid gap-3 sm:grid-cols-3">
+              <div className="border-l-4 border-[#d9b75f] bg-[#f1eadb] px-4 py-3">
+                <p className="text-xs font-black tracking-[0.16em] text-[#7c4b32]">目前時間</p>
+                <p className="mt-1 text-2xl font-black">{currentTime}</p>
               </div>
-              <div className="border-b border-[var(--color-line)] py-4 sm:border-b-0 sm:border-r sm:px-5">
-                <p className="text-sm text-[var(--color-muted)]">建議抵達</p>
-                <p className="mt-1 text-2xl font-bold">
+              <div className="border-l-4 border-[#d9b75f] bg-[#f1eadb] px-4 py-3">
+                <p className="text-xs font-black tracking-[0.16em] text-[#7c4b32]">建議抵達</p>
+                <p className="mt-1 text-2xl font-black">
                   {dayStatus === "today" ? nextItem?.startTime ?? "--:--" : selectedDay.date}
                 </p>
               </div>
-              <div className="py-4 sm:pl-5">
-                <p className="text-sm text-[var(--color-muted)]">提醒</p>
-                <p className="mt-1 text-2xl font-bold">{dayWarnings.length} 則</p>
+              <div className="border-l-4 border-[#d9b75f] bg-[#f1eadb] px-4 py-3">
+                <p className="text-xs font-black tracking-[0.16em] text-[#7c4b32]">提醒</p>
+                <p className="mt-1 text-2xl font-black">{dayWarnings.length} 則</p>
               </div>
             </div>
           </section>
 
-          <aside className="rounded-lg bg-[var(--color-ink)] p-5 text-white shadow-sm sm:p-6">
+          <aside className="relative overflow-hidden border-2 border-[#183833] bg-[#0c4160] p-5 text-white shadow-[8px_8px_0_#b43c2f] sm:p-6">
+            <div className="absolute inset-0 opacity-20" style={taiwanTilePattern} />
+            <div className="relative">
             <div className="flex items-center justify-between gap-4">
-              <p className="text-sm font-semibold text-white/60">行程路線</p>
-              <span className="rounded-md bg-white/10 px-3 py-1 text-xs font-semibold text-white/70">
+              <p className="text-sm font-black tracking-[0.18em] text-[#f2d179]">行程路線</p>
+              <span className="border-2 border-white/20 bg-white/10 px-3 py-1 text-xs font-black text-white/70">
                 {paceLabels[trip.pace]}
               </span>
             </div>
@@ -164,22 +174,24 @@ export function HomeDashboard() {
               {items.map((item, index) => (
                 <div key={item.id} className="flex gap-4">
                   <div className="flex flex-col items-center">
-                    <span className="grid size-8 place-items-center rounded-md bg-white text-sm font-bold text-[var(--color-ink)]">
+                    <span className="grid size-9 place-items-center border-2 border-white bg-[#b43c2f] text-sm font-black text-white">
                       {index + 1}
                     </span>
-                    {index < items.length - 1 ? <span className="h-full w-px bg-white/20" /> : null}
+                    {index < items.length - 1 ? <span className="h-full w-1 bg-white/25" /> : null}
                   </div>
                   <div className="pb-5">
                     <p className="text-sm text-white/55">
                       {item.startTime} - {item.endTime} · {categoryLabels[item.type]}
                     </p>
-                    <h3 className="mt-1 text-lg font-bold">{item.title}</h3>
+                    <h3 className="mt-1 text-lg font-black">{item.title}</h3>
                     {item.note ? <p className="mt-1 text-sm text-white/60">{item.note}</p> : null}
                   </div>
                 </div>
               ))}
             </div>
+            </div>
           </aside>
+        </div>
         </div>
       </section>
     </main>

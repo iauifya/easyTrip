@@ -48,6 +48,41 @@ describe("trip storage adapter", () => {
     expect(loadTrips()).toEqual([sampleTrips[0]]);
   });
 
+  it("hydrates legacy itinerary items with place data", () => {
+    installStorage({
+      [storageKey]: JSON.stringify([
+        {
+          ...sampleTrips[0],
+          days: [
+            {
+              id: "day-legacy",
+              date: "2026-06-13",
+              items: [
+                {
+                  id: "item-legacy",
+                  placeId: "place-legacy",
+                  type: "food",
+                  title: "巷口午餐",
+                  startTime: "12:00",
+                  endTime: "13:00",
+                  stayMinutes: 60,
+                },
+              ],
+            },
+          ],
+        },
+      ]),
+    });
+
+    expect(loadTrips()[0].days[0].items[0].place).toMatchObject({
+      id: "place-legacy",
+      name: "巷口午餐",
+      category: "food",
+      source: "manual",
+      averageStayMinutes: 60,
+    });
+  });
+
   it("falls back to sample trips when persisted data is malformed", () => {
     installStorage({
       [storageKey]: "{bad json",

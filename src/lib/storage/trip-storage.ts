@@ -1,5 +1,5 @@
 import { sampleTrips } from "@/data/sample-trip";
-import type { Trip } from "@/types/trip";
+import type { ItineraryItem, Trip, TripDay } from "@/types/trip";
 
 const TRIPS_STORAGE_KEY = "easytrip.trips.v1";
 
@@ -22,12 +22,42 @@ function isTrip(value: unknown): value is Trip {
   );
 }
 
+function normalizeItineraryItem(item: ItineraryItem): ItineraryItem {
+  const placeId = item.placeId || `place-${item.id}`;
+
+  return {
+    ...item,
+    placeId,
+    place: item.place ?? {
+      id: placeId,
+      name: item.title,
+      category: item.type,
+      source: "manual",
+      averageStayMinutes: item.stayMinutes,
+    },
+  };
+}
+
+function normalizeTripDay(day: TripDay): TripDay {
+  return {
+    ...day,
+    items: Array.isArray(day.items) ? day.items.map(normalizeItineraryItem) : [],
+  };
+}
+
+function normalizeTrip(trip: Trip): Trip {
+  return {
+    ...trip,
+    days: trip.days.map(normalizeTripDay),
+  };
+}
+
 function normalizeTrips(value: unknown): Trip[] {
   if (!Array.isArray(value)) {
     return sampleTrips;
   }
 
-  const trips = value.filter(isTrip);
+  const trips = value.filter(isTrip).map(normalizeTrip);
 
   return trips.length > 0 ? trips : sampleTrips;
 }

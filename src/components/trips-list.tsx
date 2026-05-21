@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { paceLabels } from "@/lib/trips/labels";
 import { hasTodayTripDay } from "@/lib/trips/today";
+import {
+  taiwanButton,
+  taiwanPrimaryButton,
+  taiwanWindowPattern,
+} from "@/lib/ui/taiwan-style";
 import { useTripStore } from "@/store/trip-store";
 import type { Trip } from "@/types/trip";
 
@@ -45,26 +50,28 @@ export function TripsList() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--color-surface)] text-[var(--color-ink)]">
-      <section className="mx-auto w-full max-w-6xl px-5 py-6 sm:px-8 lg:px-10">
-        <header className="flex flex-col gap-5 border-b border-[var(--color-line)] pb-6 sm:flex-row sm:items-end sm:justify-between">
+    <main className="min-h-screen bg-[#f6f3ea] text-[#183833]">
+      <section className="relative overflow-hidden bg-[#fbf8f0]">
+        <div className="absolute inset-0 opacity-80" style={taiwanWindowPattern} />
+        <div className="relative mx-auto w-full max-w-[88rem] px-5 py-6 sm:px-8 lg:px-10">
+        <header className="flex flex-col gap-5 border-b-2 border-[#1a5b4f] pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-[var(--color-teal)]">EasyTrip</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-normal sm:text-5xl">旅程列表</h1>
-            <p className="mt-3 max-w-2xl text-base leading-7 text-[var(--color-muted)]">
+            <p className="text-sm font-black tracking-[0.24em] text-[#b43c2f]">EASYTRIP</p>
+            <h1 className="mt-2 text-4xl font-black leading-tight tracking-normal sm:text-6xl">旅程列表</h1>
+            <p className="mt-3 max-w-2xl text-base leading-7 text-[#53635f]">
               選一趟旅程，首頁會切換成那趟旅程的總覽。也可以先建立一趟新的旅程，再慢慢加入每天的行程點。
             </p>
           </div>
           <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap">
             <Link
               href="/"
-              className="inline-flex min-h-10 items-center justify-center rounded-md bg-white px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-[var(--color-mist)]"
+              className={taiwanButton}
             >
               回總覽
             </Link>
             <Link
               href="/trips/new"
-              className="inline-flex min-h-10 items-center justify-center rounded-md bg-[var(--color-ink)] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-[var(--color-teal)]"
+              className={taiwanPrimaryButton}
             >
               + 建立旅程
             </Link>
@@ -80,35 +87,35 @@ export function TripsList() {
             return (
               <article
                 key={trip.id}
-                className="rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-sm transition hover:border-[var(--color-teal)]"
+                className="border-2 border-[#183833] bg-[#fffdf7] p-5 shadow-[6px_6px_0_#d8cbb6] transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[3px_3px_0_#d8cbb6]"
               >
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-2xl font-bold">{trip.title}</h2>
+                      <h2 className="text-2xl font-black">{trip.title}</h2>
                       {isSelected ? (
-                        <span className="rounded-md bg-[var(--color-sun)] px-3 py-1 text-xs font-bold">
+                        <span className="rotate-[-3deg] border-2 border-[#b43c2f] px-3 py-1 text-xs font-black text-[#b43c2f]">
                           目前選取
                         </span>
                       ) : null}
                     </div>
-                    <p className="mt-2 text-sm font-semibold text-[var(--color-teal)]">
+                    <p className="mt-2 text-sm font-black text-[#1a5b4f]">
                       {trip.destination} · {formatDateRange(trip)}
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3 border-t border-[var(--color-line)] pt-4 sm:min-w-72 sm:gap-4 sm:border-t-0 sm:pt-0">
-                    <div>
-                      <p className="text-xs text-[var(--color-muted)]">節奏</p>
-                      <p className="mt-1 font-bold">{paceLabels[trip.pace]}</p>
+                  <div className="grid grid-cols-3 gap-3 border-t-2 border-[#d8cbb6] pt-4 sm:min-w-72 sm:gap-4 sm:border-t-0 sm:pt-0">
+                    <div className="border-l-4 border-[#d9b75f] bg-[#f1eadb] px-3 py-2">
+                      <p className="text-xs font-black text-[#7c4b32]">節奏</p>
+                      <p className="mt-1 font-black">{paceLabels[trip.pace]}</p>
                     </div>
-                    <div>
-                      <p className="text-xs text-[var(--color-muted)]">天數</p>
-                      <p className="mt-1 font-bold">{stats.days} 天</p>
+                    <div className="border-l-4 border-[#d9b75f] bg-[#f1eadb] px-3 py-2">
+                      <p className="text-xs font-black text-[#7c4b32]">天數</p>
+                      <p className="mt-1 font-black">{stats.days} 天</p>
                     </div>
-                    <div>
-                      <p className="text-xs text-[var(--color-muted)]">行程</p>
-                      <p className="mt-1 font-bold">{stats.items} 站</p>
+                    <div className="border-l-4 border-[#d9b75f] bg-[#f1eadb] px-3 py-2">
+                      <p className="text-xs font-black text-[#7c4b32]">行程</p>
+                      <p className="mt-1 font-black">{stats.items} 站</p>
                     </div>
                   </div>
                 </div>
@@ -116,32 +123,29 @@ export function TripsList() {
                   <button
                     type="button"
                     onClick={() => openTrip(trip.id)}
-                    className="min-h-10 rounded-md bg-[var(--color-ink)] px-4 py-2 text-sm font-bold text-white transition hover:bg-[var(--color-teal)]"
+                    className={taiwanPrimaryButton}
                   >
                     查看總覽
                   </button>
                   <Link
                     href={`/trips/${trip.id}/day/${trip.days[0]?.id ?? ""}`}
-                    className="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-line)] px-4 py-2 text-sm font-bold transition hover:border-[var(--color-teal)] hover:text-[var(--color-teal)]"
+                    className={taiwanButton}
                   >
                     編輯行程
                   </Link>
                   {canOpenTodayMode ? (
                     <Link
                       href={`/trips/${trip.id}/today`}
-                      className="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-line)] px-4 py-2 text-sm font-bold transition hover:border-[var(--color-teal)] hover:text-[var(--color-teal)]"
+                      className={taiwanButton}
                     >
                       今日模式
                     </Link>
-                  ) : (
-                    <span className="inline-flex min-h-10 items-center justify-center rounded-md border border-[var(--color-line)] px-4 py-2 text-sm font-bold text-[var(--color-muted)]">
-                      非今日行程
-                    </span>
-                  )}
+                  ) : null}
                 </div>
               </article>
             );
           })}
+        </div>
         </div>
       </section>
     </main>

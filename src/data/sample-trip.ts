@@ -15,6 +15,14 @@ export const sampleTrip: Trip = {
         {
           id: "item-hotel",
           placeId: "place-hotel",
+          place: {
+            id: "place-hotel",
+            name: "飯店寄放行李",
+            category: "hotel",
+            address: "台北市中山區中山北路二段",
+            source: "manual",
+            averageStayMinutes: 30,
+          },
           type: "hotel",
           title: "飯店寄放行李",
           startTime: "10:00",
@@ -25,6 +33,15 @@ export const sampleTrip: Trip = {
         {
           id: "item-cafe",
           placeId: "place-cafe",
+          place: {
+            id: "place-cafe",
+            name: "巷口咖啡",
+            category: "food",
+            address: "台北市大同區赤峰街",
+            googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=%E8%B5%A4%E5%B3%B0%E8%A1%97%20%E5%92%96%E5%95%A1",
+            source: "google_maps_url",
+            averageStayMinutes: 65,
+          },
           type: "food",
           title: "巷口咖啡",
           startTime: "11:25",
@@ -35,6 +52,15 @@ export const sampleTrip: Trip = {
         {
           id: "item-museum",
           placeId: "place-museum",
+          place: {
+            id: "place-museum",
+            name: "當代藝術館",
+            category: "attraction",
+            address: "台北市大同區長安西路39號",
+            googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=%E5%8F%B0%E5%8C%97%E7%95%B6%E4%BB%A3%E8%97%9D%E8%A1%93%E9%A4%A8",
+            source: "google_maps_url",
+            averageStayMinutes: 110,
+          },
           type: "attraction",
           title: "當代藝術館",
           startTime: "13:10",
@@ -44,6 +70,15 @@ export const sampleTrip: Trip = {
         {
           id: "item-night-market",
           placeId: "place-night-market",
+          place: {
+            id: "place-night-market",
+            name: "寧夏夜市",
+            category: "food",
+            address: "台北市大同區寧夏路",
+            googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=%E5%AF%A7%E5%A4%8F%E5%A4%9C%E5%B8%82",
+            source: "google_maps_url",
+            averageStayMinutes: 90,
+          },
           type: "food",
           title: "寧夏夜市",
           startTime: "18:00",
@@ -73,6 +108,14 @@ export const sampleTrips: Trip[] = [
           {
             id: "item-train",
             placeId: "place-taichung-station",
+            place: {
+              id: "place-taichung-station",
+              name: "台中車站集合",
+              category: "transport",
+              address: "台中市中區臺灣大道一段1號",
+              source: "manual",
+              averageStayMinutes: 20,
+            },
             type: "transport",
             title: "台中車站集合",
             startTime: "09:30",
@@ -83,6 +126,14 @@ export const sampleTrips: Trip[] = [
           {
             id: "item-park",
             placeId: "place-calligraphy-greenway",
+            place: {
+              id: "place-calligraphy-greenway",
+              name: "草悟道散步",
+              category: "attraction",
+              address: "台中市西區公益路",
+              source: "manual",
+              averageStayMinutes: 70,
+            },
             type: "attraction",
             title: "草悟道散步",
             startTime: "10:30",
@@ -92,6 +143,14 @@ export const sampleTrips: Trip[] = [
           {
             id: "item-lunch",
             placeId: "place-lunch",
+            place: {
+              id: "place-lunch",
+              name: "勤美附近午餐",
+              category: "food",
+              address: "台中市西區中興街",
+              source: "manual",
+              averageStayMinutes: 70,
+            },
             type: "food",
             title: "勤美附近午餐",
             startTime: "12:00",

@@ -29,6 +29,7 @@ export type TripDay = {
 export type ItineraryItem = {
   id: string;
   placeId: string;
+  place?: Place;
   type: ItineraryItemType;
   title: string;
   startTime: string;
@@ -40,10 +41,14 @@ export type ItineraryItem = {
 export type Place = {
   id: string;
   name: string;
-  category: Exclude<ItineraryItemType, "rest">;
-  address: string;
+  category: ItineraryItemType;
+  address?: string;
   lat?: number;
   lng?: number;
+  googlePlaceId?: string;
+  googleMapsUrl?: string;
+  mapPreviewUrl?: string;
+  source?: "manual" | "google_maps_url" | "google_place" | "place_search";
   averageStayMinutes?: number;
   note?: string;
 };
