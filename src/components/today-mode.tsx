@@ -10,7 +10,7 @@ import {
 } from "@/lib/itinerary/day-insights";
 import {
   formatDistanceMeters,
-  getRouteEstimateStop,
+  getRouteEstimateStops,
   type RouteEstimatesResponse,
   type RouteTravelEstimate,
 } from "@/lib/routes/travel-estimates";
@@ -113,7 +113,7 @@ export function TodayMode({ tripId }: { tripId: string }) {
   }, [day, setSelectedDayId, setSelectedTripId, tripId]);
 
   const items = getSortedItems(day?.items ?? []);
-  const routeEstimateStopsJson = JSON.stringify(items.map(getRouteEstimateStop));
+  const routeEstimateStopsJson = JSON.stringify(getRouteEstimateStops(items));
   const nextStop = getNextStopInsight(items, currentTime);
   const progress = getDayProgress(items, currentTime);
   const warnings = trip ? getDayWarnings(items, trip.pace) : [];

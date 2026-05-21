@@ -26,7 +26,7 @@ import { adjustTripSchedule } from "@/lib/trips/schedule";
 import { getSortedItems, getTightGapItemIds, minutesToTime, timeToMinutes } from "@/lib/time/itinerary";
 import { getTodayTripDay, getTripDayStatus } from "@/lib/trips/today";
 import {
-  getRouteEstimateStop,
+  getRouteEstimateStops,
   type RouteEstimatesResponse,
   type RouteTravelEstimate,
   type UnavailableRouteLeg,
@@ -325,7 +325,7 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
   const trip = trips.find((item) => item.id === tripId);
   const day = trip?.days.find((item) => item.id === dayId);
   const items = getSortedItems(day?.items ?? []);
-  const routeEstimateStopsJson = JSON.stringify(items.map(getRouteEstimateStop));
+  const routeEstimateStopsJson = JSON.stringify(getRouteEstimateStops(items));
   const visibleRouteEstimates = items.length >= 2 ? routeEstimates : [];
   const visibleUnavailableRouteLegs = items.length >= 2 ? unavailableRouteLegs : [];
   const visibleRouteEstimateMessage = items.length >= 2 ? routeEstimateMessage : "";

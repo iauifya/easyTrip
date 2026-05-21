@@ -1,4 +1,5 @@
 import type { ItineraryItem, TravelMethod } from "@/types/trip";
+import { createGoogleMapsSearchUrl } from "@/lib/places/google-maps";
 
 export type RouteEstimateStop = {
   id: string;
@@ -44,6 +45,51 @@ export function getRouteEstimateStop(item: ItineraryItem): RouteEstimateStop {
     lat: item.place?.lat,
     lng: item.place?.lng,
   };
+}
+
+function getAddressContext(stops: RouteEstimateStop[], index: number) {
+  for (let offset = 1; offset < stops.length; offset += 1) {
+    const nearbyStops = [stops[index - offset], stops[index + offset]].filter(Boolean);
+
+    for (const stop of nearbyStops) {
+      const district = stop.address?.match(/[\u4e00-\u9fa5]{2,3}市[\u4e00-\u9fa5]{1,4}區/)?.[0];
+      const city = stop.address?.match(/[\u4e00-\u9fa5]{2,3}[市縣]/)?.[0];
+
+      if (district) {
+        return district;
+      }
+
+      if (city) {
+        return city;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+export function getRouteEstimateStops(items: ItineraryItem[]) {
+  const stops = items.map(getRouteEstimateStop);
+
+  return stops.map((stop, index) => {
+    if (hasExactRouteLocation(stop) || !stop.googleMapsUrl || !stop.title.trim()) {
+      return stop;
+    }
+
+    const addressContext = getAddressContext(stops, index);
+
+    if (!addressContext || getWaypointQuery(stop).includes(addressContext)) {
+      return stop;
+    }
+
+    const contextualQuery = `${stop.title} ${addressContext}`;
+
+    return {
+      ...stop,
+      address: stop.address ?? contextualQuery,
+      googleMapsUrl: createGoogleMapsSearchUrl(contextualQuery),
+    };
+  });
 }
 
 export function getWaypointQuery(stop: RouteEstimateStop) {
