@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getGoogleMapsApiKey } from "@/lib/google-maps-platform";
 import {
   isGoogleMapsUrl,
   parseGoogleMapsUrl,
@@ -30,7 +31,7 @@ async function resolveRedirectUrl(url: string) {
 }
 
 async function searchPlace(query: string, locationBias?: { lat?: number; lng?: number }) {
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  const apiKey = getGoogleMapsApiKey();
 
   if (!apiKey || !query) {
     return undefined;

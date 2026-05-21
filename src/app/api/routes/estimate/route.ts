@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getGoogleMapsApiKey } from "@/lib/google-maps-platform";
 import { isGoogleMapsUrl, parseGoogleMapsUrl } from "@/lib/places/google-maps";
 import {
   createRoutesApiWaypoint,
@@ -75,7 +76,7 @@ async function searchPlaceForRoute(
   query: string,
   locationBias?: { lat?: number; lng?: number },
 ): Promise<Pick<RouteEstimateStop, "googlePlaceId" | "lat" | "lng"> | undefined> {
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  const apiKey = getGoogleMapsApiKey();
 
   if (!apiKey) {
     return undefined;
@@ -183,7 +184,7 @@ export async function POST(request: Request) {
     } satisfies RouteEstimatesResponse);
   }
 
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  const apiKey = getGoogleMapsApiKey();
 
   if (!apiKey) {
     return NextResponse.json({
