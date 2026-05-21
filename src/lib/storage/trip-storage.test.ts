@@ -83,6 +83,41 @@ describe("trip storage adapter", () => {
     });
   });
 
+  it("refreshes old sample templates with exact route locations", () => {
+    installStorage({
+      [storageKey]: JSON.stringify([
+        {
+          ...sampleTrips[0],
+          days: [
+            {
+              id: "day-1",
+              date: "2026-06-13",
+              items: [
+                {
+                  id: "item-hotel",
+                  placeId: "place-hotel",
+                  type: "hotel",
+                  title: "飯店寄放行李",
+                  startTime: "10:00",
+                  endTime: "10:30",
+                  stayMinutes: 30,
+                  place: {
+                    id: "place-hotel",
+                    name: "飯店寄放行李",
+                    category: "hotel",
+                    address: "台北市中山區中山北路二段",
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ]),
+    });
+
+    expect(loadTrips()[0]).toEqual(sampleTrips[0]);
+  });
+
   it("falls back to sample trips when persisted data is malformed", () => {
     installStorage({
       [storageKey]: "{bad json",

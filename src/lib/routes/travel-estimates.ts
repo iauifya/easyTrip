@@ -20,9 +20,17 @@ export type RouteTravelEstimate = {
   source: "google_routes" | "unavailable";
 };
 
+export type UnavailableRouteLeg = {
+  id: string;
+  fromItemId: string;
+  toItemId: string;
+  reason: "invalid_place" | "route_unavailable";
+};
+
 export type RouteEstimatesResponse = {
   estimates: RouteTravelEstimate[];
-  status: "ok" | "missing_key" | "insufficient_stops" | "partial";
+  unavailableLegs?: UnavailableRouteLeg[];
+  status: "ok" | "missing_key" | "insufficient_stops" | "partial" | "invalid_place";
   message?: string;
 };
 
@@ -63,6 +71,10 @@ export function createRoutesApiWaypoint(stop: RouteEstimateStop) {
   return {
     address: getWaypointQuery(stop),
   };
+}
+
+export function hasExactRouteLocation(stop: RouteEstimateStop) {
+  return Boolean(stop.googlePlaceId || (typeof stop.lat === "number" && typeof stop.lng === "number"));
 }
 
 export function parseGoogleDurationSeconds(duration: string | undefined) {

@@ -4,6 +4,7 @@ import {
   formatDistanceMeters,
   getRouteEstimateStop,
   getWaypointQuery,
+  hasExactRouteLocation,
   parseGoogleDurationSeconds,
   secondsToRoundedMinutes,
 } from "./travel-estimates";
@@ -52,6 +53,12 @@ describe("travel estimate helpers", () => {
         },
       },
     });
+  });
+
+  it("requires exact route locations before estimating", () => {
+    expect(hasExactRouteLocation({ id: "a", title: "Cafe", address: "Taipei" })).toBe(false);
+    expect(hasExactRouteLocation({ id: "a", title: "Cafe", googlePlaceId: "place-123" })).toBe(true);
+    expect(hasExactRouteLocation({ id: "a", title: "Cafe", lat: 25.05, lng: 121.52 })).toBe(true);
   });
 
   it("parses Google duration values", () => {

@@ -109,4 +109,24 @@ describe("route preview helpers", () => {
       estimatedMinutes: 8,
     });
   });
+
+  it("marks unavailable legs as invalid place errors", () => {
+    const items = [
+      item({ id: "a", title: "Hotel" }),
+      item({ id: "b", title: "Cafe" }),
+    ];
+
+    expect(
+      createRoutePreviewModel(items, [], [
+        {
+          id: "a-b",
+          fromItemId: "a",
+          toItemId: "b",
+          reason: "invalid_place",
+        },
+      ]).legs[0],
+    ).toMatchObject({
+      status: "invalid_place",
+    });
+  });
 });

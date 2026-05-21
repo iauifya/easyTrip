@@ -1,5 +1,5 @@
 import { timeToMinutes } from "@/lib/time/itinerary";
-import type { RouteTravelEstimate } from "@/lib/routes/travel-estimates";
+import type { RouteTravelEstimate, UnavailableRouteLeg } from "@/lib/routes/travel-estimates";
 import type { ItineraryItem } from "@/types/trip";
 
 export type RoutePreviewStop = {
@@ -17,7 +17,7 @@ export type RoutePreviewLeg = {
   gapMinutes: number;
   estimatedMinutes?: number;
   distanceMeters?: number;
-  status: "estimated" | "pending" | "needs_place";
+  status: "estimated" | "pending" | "needs_place" | "invalid_place";
 };
 
 export type RoutePreviewModel = {
@@ -75,8 +75,10 @@ export function buildGoogleMapsDirectionsUrl(items: ItineraryItem[]) {
 export function createRoutePreviewModel(
   items: ItineraryItem[],
   estimates: RouteTravelEstimate[] = [],
+  unavailableLegs: UnavailableRouteLeg[] = [],
 ): RoutePreviewModel {
   const estimateByLegId = new Map(estimates.map((estimate) => [estimate.id, estimate]));
+  const unavailableLegIds = new Set(unavailableLegs.map((leg) => leg.id));
   const stops = items.map<RoutePreviewStop>((item) => ({
     id: item.id,
     title: item.title,
@@ -100,9 +102,11 @@ export function createRoutePreviewModel(
       distanceMeters: estimate?.distanceMeters,
       status: estimate
         ? "estimated"
-        : item.place?.googleMapsUrl && nextItem.place?.googleMapsUrl
-          ? "pending"
-          : "needs_place",
+        : unavailableLegIds.has(id)
+          ? "invalid_place"
+          : item.place?.googleMapsUrl && nextItem.place?.googleMapsUrl
+            ? "pending"
+            : "needs_place",
     };
   });
 

@@ -29,6 +29,7 @@ import {
   getRouteEstimateStop,
   type RouteEstimatesResponse,
   type RouteTravelEstimate,
+  type UnavailableRouteLeg,
 } from "@/lib/routes/travel-estimates";
 import { RoutePreview } from "@/components/route-preview";
 import { useTripStore } from "@/store/trip-store";
@@ -139,6 +140,7 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
   const [scheduleMessage, setScheduleMessage] = useState("");
   const [googleMapsLookupMessage, setGoogleMapsLookupMessage] = useState("");
   const [routeEstimates, setRouteEstimates] = useState<RouteTravelEstimate[]>([]);
+  const [unavailableRouteLegs, setUnavailableRouteLegs] = useState<UnavailableRouteLeg[]>([]);
   const [routeEstimateMessage, setRouteEstimateMessage] = useState("");
   const [isEstimatingRoute, setIsEstimatingRoute] = useState(false);
   const trips = useTripStore((state) => state.trips);
@@ -216,6 +218,7 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
   const items = getSortedItems(day?.items ?? []);
   const routeEstimateStopsJson = JSON.stringify(items.map(getRouteEstimateStop));
   const visibleRouteEstimates = items.length >= 2 ? routeEstimates : [];
+  const visibleUnavailableRouteLegs = items.length >= 2 ? unavailableRouteLegs : [];
   const visibleRouteEstimateMessage = items.length >= 2 ? routeEstimateMessage : "";
   const tightGapItemIds = getTightGapItemIds(items);
   const dayWarnings = trip ? getDayWarnings(items, trip.pace) : [];
@@ -406,10 +409,12 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
         const result = (await response.json()) as RouteEstimatesResponse;
 
         setRouteEstimates(result.estimates);
+        setUnavailableRouteLegs(result.unavailableLegs ?? []);
         setRouteEstimateMessage(result.message ?? "");
       } catch (error) {
         if (!(error instanceof DOMException && error.name === "AbortError")) {
           setRouteEstimates([]);
+          setUnavailableRouteLegs([]);
           setRouteEstimateMessage("暫時無法估算移動時間。");
         }
       } finally {
@@ -800,6 +805,7 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
               <RoutePreview
                 estimateMessage={visibleRouteEstimateMessage}
                 estimates={visibleRouteEstimates}
+                unavailableLegs={visibleUnavailableRouteLegs}
                 isEstimating={isEstimatingRoute}
                 items={items}
               />
@@ -897,6 +903,7 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
               <RoutePreview
                 estimateMessage={visibleRouteEstimateMessage}
                 estimates={visibleRouteEstimates}
+                unavailableLegs={visibleUnavailableRouteLegs}
                 isEstimating={isEstimatingRoute}
                 items={items}
               />

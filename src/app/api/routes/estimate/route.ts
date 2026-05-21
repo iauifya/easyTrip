@@ -3,6 +3,7 @@ import { getGoogleMapsApiKey } from "@/lib/google-maps-platform";
 import { isGoogleMapsUrl, parseGoogleMapsUrl } from "@/lib/places/google-maps";
 import {
   createRoutesApiWaypoint,
+  hasExactRouteLocation,
   parseGoogleDurationSeconds,
   secondsToRoundedMinutes,
   type RouteEstimateStop,
@@ -172,6 +173,19 @@ async function estimateLeg(
   };
 }
 
+function createUnavailableLeg(
+  from: RouteEstimateStop,
+  to: RouteEstimateStop,
+  reason: "invalid_place" | "route_unavailable",
+) {
+  return {
+    id: `${from.id}-${to.id}`,
+    fromItemId: from.id,
+    toItemId: to.id,
+    reason,
+  };
+}
+
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => undefined)) as EstimateRequestBody | undefined;
   const stops = body?.stops?.filter(hasUsableStop) ?? [];
@@ -195,18 +209,40 @@ export async function POST(request: Request) {
   }
 
   const resolvedStops = await Promise.all(stops.map(resolveGoogleMapsStop));
-  const estimates = (
-    await Promise.all(
-      resolvedStops.slice(0, -1).map((stop, index) => estimateLeg(stop, resolvedStops[index + 1], apiKey)),
-    )
-  ).filter((estimate): estimate is RouteTravelEstimate => Boolean(estimate));
+  const legResults = await Promise.all(
+    resolvedStops.slice(0, -1).map(async (stop, index) => {
+      const nextStop = resolvedStops[index + 1];
+
+      if (!hasExactRouteLocation(stop) || !hasExactRouteLocation(nextStop)) {
+        return {
+          estimate: undefined,
+          unavailableLeg: createUnavailableLeg(stop, nextStop, "invalid_place"),
+        };
+      }
+
+      const estimate = await estimateLeg(stop, nextStop, apiKey);
+
+      return {
+        estimate,
+        unavailableLeg: estimate ? undefined : createUnavailableLeg(stop, nextStop, "route_unavailable"),
+      };
+    }),
+  );
+  const estimates = legResults
+    .map((result) => result.estimate)
+    .filter((estimate): estimate is RouteTravelEstimate => Boolean(estimate));
+  const unavailableLegs = legResults.flatMap((result) => (result.unavailableLeg ? [result.unavailableLeg] : []));
+  const hasInvalidPlace = unavailableLegs.some((leg) => leg.reason === "invalid_place");
 
   return NextResponse.json({
     estimates,
-    status: estimates.length === resolvedStops.length - 1 ? "ok" : "partial",
+    unavailableLegs,
+    status: estimates.length === resolvedStops.length - 1 ? "ok" : hasInvalidPlace ? "invalid_place" : "partial",
     message:
       estimates.length === resolvedStops.length - 1
         ? undefined
-        : "部分路段暫時無法估算，請確認地點名稱或 Google Maps 連結。",
+        : hasInvalidPlace
+          ? "地址有誤，無法估算。請改用正確的 Google Maps 連結。"
+          : "部分路段暫時無法估算，請確認地點名稱或 Google Maps 連結。",
   } satisfies RouteEstimatesResponse);
 }

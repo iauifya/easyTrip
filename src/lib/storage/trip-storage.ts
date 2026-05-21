@@ -2,6 +2,15 @@ import { sampleTrips } from "@/data/sample-trip";
 import type { ItineraryItem, Trip, TripDay } from "@/types/trip";
 
 const TRIPS_STORAGE_KEY = "easytrip.trips.v1";
+const LEGACY_SAMPLE_ITEM_IDS = new Set([
+  "item-hotel",
+  "item-cafe",
+  "item-museum",
+  "item-night-market",
+  "item-train",
+  "item-park",
+  "item-lunch",
+]);
 
 function canUseStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
@@ -52,12 +61,45 @@ function normalizeTrip(trip: Trip): Trip {
   };
 }
 
+function hasExactRouteTemplate(trip: Trip) {
+  return trip.days.every((day) =>
+    day.items.every((item) =>
+      Boolean(
+        item.place?.googlePlaceId ||
+          (typeof item.place?.lat === "number" && typeof item.place?.lng === "number"),
+      ),
+    ),
+  );
+}
+
+function shouldRefreshSampleTemplate(trip: Trip) {
+  return trip.days.some((day) =>
+    day.items.some(
+      (item) =>
+        LEGACY_SAMPLE_ITEM_IDS.has(item.id) &&
+        !item.place?.googlePlaceId &&
+        typeof item.place?.lat !== "number",
+    ),
+  );
+}
+
 function normalizeTrips(value: unknown): Trip[] {
   if (!Array.isArray(value)) {
     return sampleTrips;
   }
 
-  const trips = value.filter(isTrip).map(normalizeTrip);
+  const trips = value
+    .filter(isTrip)
+    .map(normalizeTrip)
+    .map((trip) => {
+      const matchingSample = sampleTrips.find((sampleTrip) => sampleTrip.id === trip.id);
+
+      if (matchingSample && !hasExactRouteTemplate(trip) && shouldRefreshSampleTemplate(trip)) {
+        return matchingSample;
+      }
+
+      return trip;
+    });
 
   return trips.length > 0 ? trips : sampleTrips;
 }

@@ -1,5 +1,9 @@
 import { createRoutePreviewModel } from "@/lib/routes/route-preview";
-import { formatDistanceMeters, type RouteTravelEstimate } from "@/lib/routes/travel-estimates";
+import {
+  formatDistanceMeters,
+  type RouteTravelEstimate,
+  type UnavailableRouteLeg,
+} from "@/lib/routes/travel-estimates";
 import type { ItineraryItem } from "@/types/trip";
 
 const tilePattern = {
@@ -26,21 +30,27 @@ function getLegStatusLabel(leg: ReturnType<typeof createRoutePreviewModel>["legs
     return "待估算";
   }
 
+  if (leg.status === "invalid_place") {
+    return "地址有誤";
+  }
+
   return "待補連結";
 }
 
 export function RoutePreview({
   estimateMessage,
   estimates = [],
+  unavailableLegs = [],
   isEstimating = false,
   items,
 }: {
   estimateMessage?: string;
   estimates?: RouteTravelEstimate[];
+  unavailableLegs?: UnavailableRouteLeg[];
   isEstimating?: boolean;
   items: ItineraryItem[];
 }) {
-  const model = createRoutePreviewModel(items, estimates);
+  const model = createRoutePreviewModel(items, estimates, unavailableLegs);
   const previewStops = model.stops.slice(0, markerPositions.length);
 
   if (model.stops.length === 0) {
