@@ -232,20 +232,10 @@ export function TodayMode({ tripId }: { tripId: string }) {
 
               <p className="mt-5 max-w-2xl text-lg leading-8 text-[#53635f]">{nextStop.message}</p>
 
-              <div className="mt-8 grid gap-3 sm:grid-cols-4">
+              <div className="mt-8 grid gap-3 sm:grid-cols-3">
                 <div className="min-w-0 border-l-4 border-[#d9b75f] bg-[#f1eadb] px-4 py-3">
                   <p className="text-xs font-black tracking-[0.16em] text-[#7c4b32]">開始時間</p>
                   <p className="mt-1 text-2xl font-black">{nextItem?.startTime ?? "--:--"}</p>
-                </div>
-                <div className="min-w-0 border-l-4 border-[#d9b75f] bg-[#f1eadb] px-4 py-3">
-                  <p className="text-xs font-black tracking-[0.16em] text-[#7c4b32]">今日進度</p>
-                  <p className="mt-1 text-2xl font-black">
-                    {progress.completed} / {progress.total}
-                  </p>
-                </div>
-                <div className="min-w-0 border-l-4 border-[#d9b75f] bg-[#f1eadb] px-4 py-3">
-                  <p className="text-xs font-black tracking-[0.16em] text-[#7c4b32]">提醒</p>
-                  <p className="mt-1 text-2xl font-black">{warnings.length} 則</p>
                 </div>
                 <div className="min-w-0 border-l-4 border-[#d9b75f] bg-[#f1eadb] px-4 py-3">
                   <p className="text-xs font-black tracking-[0.16em] text-[#7c4b32]">下一段移動</p>
@@ -257,6 +247,12 @@ export function TodayMode({ tripId }: { tripId: string }) {
                       {formatDistanceMeters(moveEstimate.distanceMeters)}
                     </p>
                   ) : null}
+                </div>
+                <div className="min-w-0 border-l-4 border-[#d9b75f] bg-[#f1eadb] px-4 py-3">
+                  <p className="text-xs font-black tracking-[0.16em] text-[#7c4b32]">今日進度</p>
+                  <p className="mt-1 text-2xl font-black">
+                    {progress.completed} / {progress.total}
+                  </p>
                 </div>
               </div>
 

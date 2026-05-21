@@ -33,7 +33,7 @@ import {
 } from "@/lib/routes/travel-estimates";
 import { RoutePreview } from "@/components/route-preview";
 import { useTripStore } from "@/store/trip-store";
-import type { ItineraryItem, ItineraryItemType } from "@/types/trip";
+import type { ItineraryItem, ItineraryItemType, TripPace } from "@/types/trip";
 
 const itemTypeOptions: Array<{
   value: ItineraryItemType;
@@ -45,6 +45,16 @@ const itemTypeOptions: Array<{
   { value: "transport", label: categoryLabels.transport },
   { value: "shopping", label: categoryLabels.shopping },
   { value: "rest", label: categoryLabels.rest },
+];
+
+const paceOptions: Array<{
+  value: TripPace;
+  label: string;
+  helper: string;
+}> = [
+  { value: "relaxed", label: paceLabels.relaxed, helper: "最多 4 站，停留總長約 6 小時內" },
+  { value: "normal", label: paceLabels.normal, helper: "最多 5 站，停留總長約 8 小時內" },
+  { value: "packed", label: paceLabels.packed, helper: "最多 7 站，停留總長約 10 小時內" },
 ];
 
 const fallbackValues: ItineraryItemInput = {
@@ -94,6 +104,96 @@ function toFormValues(item: ItineraryItem): ItineraryItemInput {
     lng: item.place?.lng,
     note: item.note ?? "",
   };
+}
+
+function getOpenGapRecommendation(
+  items: ItineraryItem[],
+  type: ItineraryItemType,
+  editingItemId?: string | null,
+) {
+  const sortedItems = getSortedItems(items).filter((item) => item.id !== editingItemId);
+  const stayMinutes = getDefaultStayMinutes(type);
+
+  for (let index = 0; index < sortedItems.length - 1; index += 1) {
+    const previous = sortedItems[index];
+    const next = sortedItems[index + 1];
+    const previousEnd = timeToMinutes(previous.endTime);
+    const nextStart = timeToMinutes(next.startTime);
+    const gapMinutes = nextStart - previousEnd;
+
+    if (gapMinutes > 90) {
+      const startMinutes = previousEnd + 30;
+      const latestEndMinutes = nextStart - 30;
+      const endMinutes = Math.min(startMinutes + stayMinutes, latestEndMinutes);
+
+      if (startMinutes < endMinutes) {
+        return {
+          startTime: minutesToTime(startMinutes),
+          endTime: minutesToTime(endMinutes),
+          previousTitle: previous.title,
+          nextTitle: next.title,
+        };
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function getNextScheduleConflict(
+  items: ItineraryItem[],
+  startTime: string | undefined,
+  endTime: string | undefined,
+  editingItemId?: string | null,
+) {
+  if (!startTime || !endTime) {
+    return undefined;
+  }
+
+  const startMinutes = timeToMinutes(startTime);
+  const endMinutes = timeToMinutes(endTime);
+
+  if (!Number.isFinite(startMinutes) || !Number.isFinite(endMinutes)) {
+    return undefined;
+  }
+
+  const nextItem = getSortedItems(items)
+    .filter((item) => item.id !== editingItemId)
+    .find((item) => timeToMinutes(item.startTime) > startMinutes);
+
+  if (!nextItem) {
+    return undefined;
+  }
+
+  const minutesBeforeNext = timeToMinutes(nextItem.startTime) - endMinutes;
+
+  if (minutesBeforeNext < 30) {
+    return {
+      nextTitle: nextItem.title,
+      nextStartTime: nextItem.startTime,
+    };
+  }
+
+  return undefined;
+}
+
+function getWarningDetail(warningId: string, pace: TripPace) {
+  const paceLabel = paceLabels[pace];
+  const matchedPace = paceOptions.find((option) => option.value === pace);
+
+  if (warningId === "too-many-stops") {
+    return `目前使用「${paceLabel}」判斷，${matchedPace?.helper ?? "會依節奏限制站點數"}。如果你本來就想走緊湊路線，可以調成更充實的節奏。`;
+  }
+
+  if (warningId === "too-long") {
+    return `這個提醒看的是當天所有停留時間加總，不含移動時間。目前「${paceLabel}」的基準是 ${matchedPace?.helper ?? "依節奏判斷停留總長"}。`;
+  }
+
+  if (warningId === "tight-gaps") {
+    return "這個提醒會檢查相鄰行程之間是否少於 20 分鐘，避免沒有足夠時間找路、排隊或移動。";
+  }
+
+  return undefined;
 }
 
 function PlaceSearchPreview({ preview }: { preview?: GoogleMapsPreview }) {
@@ -156,6 +256,7 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
   const {
     control,
     formState: { errors, isSubmitting },
+    getValues,
     handleSubmit,
     register,
     reset,
@@ -187,6 +288,14 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
   const selectedType = useWatch({
     control,
     name: "type",
+  });
+  const selectedStartTime = useWatch({
+    control,
+    name: "startTime",
+  });
+  const selectedEndTime = useWatch({
+    control,
+    name: "endTime",
   });
   const title = useWatch({
     control,
@@ -228,6 +337,13 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
   const todayDay = getTodayTripDay(trip);
   const lastItemEndTime = items.at(-1)?.endTime ?? "08:00";
   const nextDefaultStartTime = items.length > 0 ? minutesToTime(timeToMinutes(lastItemEndTime) + 30) : "08:00";
+  const openGapRecommendation = getOpenGapRecommendation(items, selectedType, editingItemId);
+  const scheduleConflict = getNextScheduleConflict(
+    items,
+    selectedStartTime,
+    selectedEndTime,
+    editingItemId,
+  );
   const dayIdForDefaults = day?.id;
   const placeSearchPreview = createGoogleMapsPreview({
     title: title ?? "",
@@ -245,6 +361,49 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
       startTime: nextDefaultStartTime,
       endTime: minutesToTime(timeToMinutes(nextDefaultStartTime) + getDefaultStayMinutes(type)),
     };
+  }
+
+  function clearPlaceSearch() {
+    setValue("title", "", {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("googleMapsUrl", "", {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("address", "", {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("googlePlaceId", "", {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("lat", undefined, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("lng", undefined, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setGoogleMapsLookupMessage("");
+  }
+
+  function applyOpenGapRecommendation() {
+    if (!openGapRecommendation) {
+      return;
+    }
+
+    setValue("startTime", openGapRecommendation.startTime, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setValue("endTime", openGapRecommendation.endTime, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
   }
 
   const nextStopTitle =
@@ -275,13 +434,13 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
   }, [editingItemId, nextDefaultStartTime, setValue, title]);
 
   useEffect(() => {
-    if (!title?.trim() && suggestedGooglePlaceName) {
+    if (suggestedGooglePlaceName && getValues("title") !== suggestedGooglePlaceName) {
       setValue("title", suggestedGooglePlaceName, {
         shouldDirty: true,
         shouldValidate: true,
       });
     }
-  }, [setValue, suggestedGooglePlaceName, title]);
+  }, [getValues, setValue, suggestedGooglePlaceName]);
 
   useEffect(() => {
     const trimmedUrl = googleMapsUrl?.trim();
@@ -316,7 +475,7 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
           lng?: number;
         };
 
-        if (!title?.trim() && place.displayName) {
+        if (place.displayName && getValues("title") !== place.displayName) {
           setValue("title", place.displayName, {
             shouldDirty: true,
             shouldValidate: true,
@@ -369,7 +528,7 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [googleMapsUrl, setValue, title]);
+  }, [getValues, googleMapsUrl, setValue]);
 
   useEffect(() => {
     if (!editingItemId && dayIdForDefaults) {
@@ -481,10 +640,14 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
     const formData = new FormData(event.currentTarget);
     const startDate = String(formData.get("startDate") ?? "");
     const dayCount = Number(formData.get("dayCount"));
+    const pace = String(formData.get("pace") ?? trip.pace) as TripPace;
 
     try {
-      updateTrip(adjustTripSchedule(trip, startDate, dayCount));
-      setScheduleMessage("行程日期已更新");
+      updateTrip({
+        ...adjustTripSchedule(trip, startDate, dayCount),
+        pace,
+      });
+      setScheduleMessage("行程日期與節奏已更新");
     } catch (error) {
       setScheduleMessage(error instanceof Error ? error.message : "行程日期更新失敗");
     }
@@ -524,6 +687,17 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
         ) : null}
       </label>
 
+      <PlaceSearchPreview preview={placeSearchPreview} />
+      {title?.trim() || googleMapsUrl?.trim() || address?.trim() || googlePlaceId || lat || lng ? (
+        <button
+          type="button"
+          onClick={clearPlaceSearch}
+          className="w-fit border border-white/25 px-2 py-1 text-[11px] font-black text-white/85 transition hover:bg-white/10 hover:text-white"
+        >
+          重新搜尋地點
+        </button>
+      ) : null}
+
       <label className="grid gap-2">
         <span className="text-sm font-black">Google Maps 連結</span>
         <input
@@ -557,6 +731,11 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
             </option>
           ))}
         </select>
+        {errors.type ? (
+          <span className="text-sm font-black text-[#f2d179]">
+            {getFieldError(errors.type)}
+          </span>
+        ) : null}
         <span className="text-xs font-bold text-white/60">目前類型：{categoryLabels[selectedType]}</span>
       </label>
 
@@ -568,6 +747,11 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
             {...register("startTime")}
             className="border-2 border-white/20 bg-white px-3 py-3 text-[#183833] outline-none transition focus:border-[#f2d179]"
           />
+          {errors.startTime ? (
+            <span className="text-sm font-black text-[#f2d179]">
+              {getFieldError(errors.startTime)}
+            </span>
+          ) : null}
         </label>
         <label className="grid gap-2">
           <span className="text-sm font-black">結束</span>
@@ -576,12 +760,33 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
             {...register("endTime")}
             className="border-2 border-white/20 bg-white px-3 py-3 text-[#183833] outline-none transition focus:border-[#f2d179]"
           />
+          {errors.endTime ? (
+            <span className="text-sm font-black text-[#f2d179]">
+              {getFieldError(errors.endTime)}
+            </span>
+          ) : null}
         </label>
       </div>
-      {errors.startTime || errors.endTime ? (
-        <span className="text-sm font-black text-[#f2d179]">
-          {getFieldError(errors.startTime) ?? getFieldError(errors.endTime)}
-        </span>
+      {!editingItemId && openGapRecommendation ? (
+        <div className="border-2 border-[#f2d179] bg-[#f2d179]/10 p-3 text-xs font-bold leading-5 text-white">
+          <p className="font-black text-[#f2d179]">推薦時間</p>
+          <p className="mt-1">
+            {openGapRecommendation.previousTitle} 和 {openGapRecommendation.nextTitle} 之間有空檔，建議安排{" "}
+            {openGapRecommendation.startTime} - {openGapRecommendation.endTime}。
+          </p>
+          <button
+            type="button"
+            onClick={applyOpenGapRecommendation}
+            className="mt-2 border border-[#f2d179] px-2 py-1 text-[11px] font-black text-[#f2d179] transition hover:bg-[#f2d179] hover:text-[#183833]"
+          >
+            套用推薦時間
+          </button>
+        </div>
+      ) : null}
+      {scheduleConflict ? (
+        <p className="border-2 border-[#f2d179] bg-[#f2d179]/10 px-3 py-2 text-xs font-black leading-5 text-[#f2d179]">
+          結束時間距離「{scheduleConflict.nextTitle}」開始時間 {scheduleConflict.nextStartTime} 不到 30 分鐘，建議調整時間。
+        </p>
       ) : null}
 
       <label className="grid gap-2">
@@ -593,8 +798,6 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
           className="resize-none border-2 border-white/20 bg-white px-3 py-3 text-[#183833] outline-none transition focus:border-[#f2d179]"
         />
       </label>
-
-      <PlaceSearchPreview preview={placeSearchPreview} />
 
       <button
         type="submit"
@@ -695,7 +898,7 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
             <form
               key={`${trip.id}-${trip.startDate}-${trip.days.length}`}
               onSubmit={updateSchedule}
-              className="mt-5 grid gap-4 border-2 border-[#183833] bg-[#fffdf7] p-4 shadow-[5px_5px_0_#d8cbb6] lg:grid-cols-[1fr_120px_140px] lg:items-end"
+              className="mt-5 grid gap-4 border-2 border-[#183833] bg-[#fffdf7] p-4 shadow-[5px_5px_0_#d8cbb6] lg:grid-cols-[1fr_120px_180px_140px] lg:items-end"
             >
               <label className="grid gap-2">
                 <span className="text-xs font-black tracking-[0.16em] text-[#7c4b32]">出發日期</span>
@@ -717,6 +920,20 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                   className="min-h-11 border-2 border-[#d8cbb6] bg-white px-3 py-2 text-sm font-black text-[#183833] outline-none focus:border-[#1a5b4f]"
                 />
               </label>
+              <label className="grid gap-2">
+                <span className="text-xs font-black tracking-[0.16em] text-[#7c4b32]">旅遊節奏</span>
+                <select
+                  name="pace"
+                  defaultValue={trip.pace}
+                  className="min-h-11 border-2 border-[#d8cbb6] bg-white px-3 py-2 text-sm font-black text-[#183833] outline-none focus:border-[#1a5b4f]"
+                >
+                  {paceOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <button
                 type="submit"
                 className="min-h-11 border-2 border-[#183833] bg-[#d9b75f] px-4 py-2 text-sm font-black text-[#183833] shadow-[3px_3px_0_#183833] transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#183833]"
@@ -724,7 +941,7 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                 更新日期
               </button>
               {scheduleMessage ? (
-                <p className="text-sm font-black text-[#1a5b4f] lg:col-span-3">{scheduleMessage}</p>
+                <p className="text-sm font-black text-[#1a5b4f] lg:col-span-4">{scheduleMessage}</p>
               ) : null}
             </form>
           ) : scheduleMessage ? (
@@ -786,9 +1003,26 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                         收合
                       </span>
                     </summary>
-                    <p className="border-t-2 border-[#d9b75f] px-4 py-3 text-sm leading-6">
-                      {warning.message}
-                    </p>
+                    <div className="border-t-2 border-[#d9b75f] px-4 py-3 text-sm leading-6">
+                      <p>{warning.message}</p>
+                      {getWarningDetail(warning.id, trip.pace) ? (
+                        <p className="mt-2 text-xs font-bold leading-5 text-[#7c4b32]">
+                          {getWarningDetail(warning.id, trip.pace)}
+                        </p>
+                      ) : null}
+                      {warning.id === "too-many-stops" || warning.id === "too-long" ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsScheduleEditorOpen(true);
+                            setScheduleMessage("可在上方調整旅遊節奏，提醒門檻會跟著更新。");
+                          }}
+                          className="mt-3 border-2 border-[#183833] bg-[#d9b75f] px-3 py-2 text-xs font-black text-[#183833] shadow-[2px_2px_0_#183833] transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#183833]"
+                        >
+                          調整旅遊節奏
+                        </button>
+                      ) : null}
+                    </div>
                   </details>
                 ))}
               </div>
@@ -916,6 +1150,11 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
               <h2 className="mt-2 text-2xl font-black">
                 {editingItem ? editingItem.title : "加入下一個地點"}
               </h2>
+              {!editingItem ? (
+                <p className="mt-2 text-xs font-bold leading-5 text-white/70">
+                  可在名稱內搜尋想去的地方，或直接在 Google Maps 連結貼上網址自動帶入名稱。
+                </p>
+              ) : null}
               {renderItineraryForm()}
             </section>
           </aside>
@@ -941,6 +1180,11 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                   <h2 className="mt-1 text-2xl font-black">
                     {editingItem ? editingItem.title : "加入下一個地點"}
                   </h2>
+                  {!editingItem ? (
+                    <p className="mt-2 text-xs font-bold leading-5 text-white/70">
+                      可在名稱內搜尋想去的地方，或直接在 Google Maps 連結貼上網址自動帶入名稱。
+                    </p>
+                  ) : null}
                 </div>
                 <button
                   type="button"

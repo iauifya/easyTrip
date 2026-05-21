@@ -3,27 +3,23 @@ import { timeToMinutes } from "../time/itinerary";
 import { createGoogleMapsPreview, isGoogleMapsUrl } from "@/lib/places/google-maps";
 import type { ItineraryItem, Place } from "@/types/trip";
 
-const optionalUrlSchema = z
+const googleMapsUrlSchema = z
   .string()
   .trim()
-  .optional()
-  .refine((value) => {
-    if (!value) {
-      return true;
-    }
-
-    return isGoogleMapsUrl(value);
-  }, "請輸入有效的網址");
+  .min(1, "請填寫 Google Maps 連結")
+  .refine(isGoogleMapsUrl, "請貼上有效的 Google Maps 連結");
 
 export const itineraryItemSchema = z
   .object({
-    title: z.string().trim().min(2, "行程名稱至少需要 2 個字"),
-    type: z.enum(["attraction", "food", "hotel", "transport", "shopping", "rest"]),
-    startTime: z.string().regex(/^\d{2}:\d{2}$/, "請選擇開始時間"),
-    endTime: z.string().regex(/^\d{2}:\d{2}$/, "請選擇結束時間"),
+    title: z.string().trim().min(1, "請填寫名稱").min(2, "名稱至少需要 2 個字"),
+    type: z.enum(["attraction", "food", "hotel", "transport", "shopping", "rest"], {
+      error: "請選擇類型",
+    }),
+    startTime: z.string().trim().min(1, "請填寫開始時間").regex(/^\d{2}:\d{2}$/, "請填寫有效的開始時間"),
+    endTime: z.string().trim().min(1, "請填寫結束時間").regex(/^\d{2}:\d{2}$/, "請填寫有效的結束時間"),
     address: z.string().trim().optional(),
     googlePlaceId: z.string().trim().optional(),
-    googleMapsUrl: optionalUrlSchema,
+    googleMapsUrl: googleMapsUrlSchema,
     lat: z.coerce.number().optional(),
     lng: z.coerce.number().optional(),
     note: z.string().trim().optional(),

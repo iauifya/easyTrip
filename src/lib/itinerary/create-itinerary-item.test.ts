@@ -25,8 +25,8 @@ describe("create itinerary item helpers", () => {
     expect(item.place?.mapPreviewUrl).toContain("output=embed");
   });
 
-  it("creates a Google Maps search preview from title and address", () => {
-    const item = createItineraryItemFromInput({
+  it("rejects missing Google Maps URLs", () => {
+    const result = itineraryItemSchema.safeParse({
       title: "Taipei 101",
       type: "attraction",
       startTime: "10:00",
@@ -36,13 +36,7 @@ describe("create itinerary item helpers", () => {
       note: "",
     });
 
-    expect(item.place).toMatchObject({
-      googleMapsUrl:
-        "https://www.google.com/maps/search/?api=1&query=Taipei+101+Xinyi+District+Taipei",
-      mapPreviewUrl:
-        "https://www.google.com/maps?q=Taipei+101+Xinyi+District+Taipei&output=embed",
-      source: "place_search",
-    });
+    expect(result.success).toBe(false);
   });
 
   it("rejects an end time before the start time", () => {
@@ -52,7 +46,7 @@ describe("create itinerary item helpers", () => {
       startTime: "12:30",
       endTime: "12:00",
       address: "",
-      googleMapsUrl: "",
+      googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=%E5%8D%88%E9%A4%90",
       note: "",
     });
 
@@ -81,7 +75,7 @@ describe("create itinerary item helpers", () => {
         startTime: "12:00",
         endTime: "13:00",
         address: "台北市大安區",
-        googleMapsUrl: "",
+        googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=%E5%8D%88%E9%A4%90",
         note: "不用排太滿。",
       },
       {

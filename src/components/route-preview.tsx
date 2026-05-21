@@ -37,6 +37,28 @@ function getLegStatusLabel(leg: ReturnType<typeof createRoutePreviewModel>["legs
   return "待補連結";
 }
 
+function InvalidPlaceHelp() {
+  return (
+    <details className="group relative">
+      <summary
+        aria-label="查看地址有誤的原因與修正方式"
+        className="grid size-6 cursor-pointer list-none place-items-center border-2 border-[#b43c2f] bg-white text-[11px] font-black text-[#b43c2f] marker:hidden [&::-webkit-details-marker]:hidden"
+      >
+        !
+      </summary>
+      <div className="absolute right-0 top-8 z-20 w-64 border-2 border-[#183833] bg-[#fffdf7] p-3 text-xs leading-5 text-[#183833] shadow-[4px_4px_0_#d8cbb6]">
+        <p className="font-black text-[#b43c2f]">地址有誤，無法估算</p>
+        <p className="mt-2 font-bold text-[#53635f]">
+          這段路線缺少精準座標或 Google 地點資料，可能只有街名、行政區，或連結解析不到正確地點。
+        </p>
+        <p className="mt-2 font-bold text-[#53635f]">
+          請重新貼上正確的 Google Maps 地點連結，或在名稱欄搜尋並確認預覽地圖指到正確位置。
+        </p>
+      </div>
+    </details>
+  );
+}
+
 export function RoutePreview({
   estimateMessage,
   estimates = [],
@@ -196,12 +218,15 @@ export function RoutePreview({
                 key={leg.id}
                 className="grid gap-1 border-2 border-[#d8cbb6] bg-[#fffdf7] px-3 py-2 text-sm shadow-[2px_2px_0_#d8cbb6]"
               >
-                <div className="flex items-center justify-between gap-3 font-black">
+                <div className="flex items-start justify-between gap-3 font-black">
                   <span className="min-w-0 truncate">
                     {leg.fromTitle} → {leg.toTitle}
                   </span>
-                  <span className={leg.status === "estimated" ? "text-[#1a5b4f]" : "text-[#b43c2f]"}>
-                    {getLegStatusLabel(leg)}
+                  <span className="flex shrink-0 items-center gap-2">
+                    <span className={leg.status === "estimated" ? "text-[#1a5b4f]" : "text-[#b43c2f]"}>
+                      {getLegStatusLabel(leg)}
+                    </span>
+                    {leg.status === "invalid_place" ? <InvalidPlaceHelp /> : null}
                   </span>
                 </div>
                 {leg.estimatedMinutes ? (
