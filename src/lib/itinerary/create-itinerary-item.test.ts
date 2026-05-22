@@ -25,13 +25,32 @@ describe("create itinerary item helpers", () => {
     expect(item.place?.mapPreviewUrl).toContain("output=embed");
   });
 
-  it("rejects missing Google Maps URLs", () => {
+  it("accepts address-only inputs", () => {
+    const item = createItineraryItemFromInput({
+      title: "Taipei 101",
+      type: "attraction",
+      startTime: "10:00",
+      endTime: "11:00",
+      address: "台北市信義區信義路五段7號",
+      googleMapsUrl: "",
+      note: "",
+    });
+
+    expect(item.place).toMatchObject({
+      address: "台北市信義區信義路五段7號",
+      source: "place_search",
+      googleMapsUrl:
+        "https://www.google.com/maps/search/?api=1&query=Taipei+101+%E5%8F%B0%E5%8C%97%E5%B8%82%E4%BF%A1%E7%BE%A9%E5%8D%80%E4%BF%A1%E7%BE%A9%E8%B7%AF%E4%BA%94%E6%AE%B57%E8%99%9F",
+    });
+  });
+
+  it("rejects missing address and Google Maps URL", () => {
     const result = itineraryItemSchema.safeParse({
       title: "Taipei 101",
       type: "attraction",
       startTime: "10:00",
       endTime: "11:00",
-      address: "Xinyi District Taipei",
+      address: "",
       googleMapsUrl: "",
       note: "",
     });

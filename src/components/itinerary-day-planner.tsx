@@ -349,12 +349,12 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
     title: title ?? "",
     address: address ?? "",
     googlePlaceId: googlePlaceId ?? "",
-    googleMapsUrl: googleMapsUrl ?? "",
+    googleMapsUrl: isMobileEditorOpen ? "" : googleMapsUrl ?? "",
     lat,
     lng,
   });
-  const suggestedGooglePlaceName = googleMapsUrl ? getGoogleMapsPlaceName(googleMapsUrl) : undefined;
-  const visibleGoogleMapsLookupMessage = googleMapsUrl?.trim() ? googleMapsLookupMessage : "";
+  const suggestedGooglePlaceName = !isMobileEditorOpen && googleMapsUrl ? getGoogleMapsPlaceName(googleMapsUrl) : undefined;
+  const visibleGoogleMapsLookupMessage = !isMobileEditorOpen && googleMapsUrl?.trim() ? googleMapsLookupMessage : "";
 
   function getDefaultTimesFromLastItem(type: ItineraryItemType = "attraction") {
     return {
@@ -445,7 +445,7 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
   useEffect(() => {
     const trimmedUrl = googleMapsUrl?.trim();
 
-    if (!trimmedUrl) {
+    if (isMobileEditorOpen || !trimmedUrl) {
       return;
     }
 
@@ -528,7 +528,7 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [getValues, googleMapsUrl, setValue]);
+  }, [getValues, googleMapsUrl, isMobileEditorOpen, setValue]);
 
   useEffect(() => {
     if (!editingItemId && dayIdForDefaults) {
@@ -654,7 +654,26 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
   }
 
   function onSubmit(values: ItineraryItemInput) {
-    const result = itineraryItemSchema.safeParse(values);
+    const isMobileSubmission = shouldUseMobileEditor();
+    const normalizedValues = isMobileSubmission
+      ? {
+          ...values,
+          googleMapsUrl: "",
+          googlePlaceId: "",
+          lat: undefined,
+          lng: undefined,
+        }
+      : values;
+
+    if (isMobileSubmission && !normalizedValues.address?.trim()) {
+      setError("address", {
+        type: "manual",
+        message: "手機版請填寫完整地址",
+      });
+      return;
+    }
+
+    const result = itineraryItemSchema.safeParse(normalizedValues);
 
     if (!result.success) {
       applySchemaErrors(result.error);
@@ -699,6 +718,26 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
       ) : null}
 
       <label className="grid gap-2">
+        <span className="text-sm font-black">完整地址</span>
+        <input
+          {...register("address")}
+          placeholder="例如：台北市萬華區廣州街211號"
+          className="border-2 border-white/20 bg-white px-3 py-3 text-[#183833] outline-none transition focus:border-[#f2d179]"
+        />
+        {errors.address ? (
+          <span className="text-sm font-black text-[#f2d179]">
+            {getFieldError(errors.address)}
+          </span>
+        ) : null}
+        <span className="text-xs font-bold text-white/65 lg:hidden">
+          手機版請填寫完整地址，不使用 Google Maps 短連結。
+        </span>
+        <span className="hidden text-xs font-bold text-white/65 lg:block">
+          可填完整地址，或改貼下方 Google Maps 連結，兩者擇一即可。
+        </span>
+      </label>
+
+      <label className="hidden gap-2 lg:grid">
         <span className="text-sm font-black">Google Maps 連結</span>
         <input
           {...register("googleMapsUrl")}
@@ -714,7 +753,6 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
           <span className="text-xs font-bold text-white/70">{visibleGoogleMapsLookupMessage}</span>
         ) : null}
       </label>
-      <input type="hidden" {...register("address")} />
       <input type="hidden" {...register("googlePlaceId")} />
       <input type="hidden" {...register("lat")} />
       <input type="hidden" {...register("lng")} />

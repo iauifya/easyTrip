@@ -101,7 +101,7 @@ function findNearbyAddressContext(stops: RouteEstimateStop[], index: number) {
 }
 
 function hasRouteResolvableLocation(stop: RouteEstimateStop) {
-  return hasExactRouteLocation(stop) || Boolean(stop.googleMapsUrl && getWaypointQuery(stop));
+  return hasExactRouteLocation(stop) || Boolean(stop.address?.trim() || (stop.googleMapsUrl && getWaypointQuery(stop)));
 }
 
 async function resolveRedirectedGoogleMapsUrl(url: string) {

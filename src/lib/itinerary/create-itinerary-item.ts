@@ -11,8 +11,8 @@ import type { ItineraryItem, Place } from "@/types/trip";
 const googleMapsUrlSchema = z
   .string()
   .trim()
-  .min(1, "請填寫 Google Maps 連結")
-  .refine(isGoogleMapsUrl, "請貼上有效的 Google Maps 連結");
+  .optional()
+  .refine((value) => !value || isGoogleMapsUrl(value), "請貼上有效的 Google Maps 連結");
 
 export const itineraryItemSchema = z
   .object({
@@ -28,6 +28,10 @@ export const itineraryItemSchema = z
     lat: z.coerce.number().optional(),
     lng: z.coerce.number().optional(),
     note: z.string().trim().optional(),
+  })
+  .refine((value) => Boolean(value.address?.trim() || value.googleMapsUrl?.trim()), {
+    message: "請填寫完整地址或 Google Maps 連結",
+    path: ["address"],
   })
   .refine((value) => timeToMinutes(value.startTime) < timeToMinutes(value.endTime), {
     message: "結束時間必須晚於開始時間",
@@ -58,6 +62,7 @@ function createPlaceFromInput(
     lng: input.lng,
   });
   const hasGoogleMapsUrl = Boolean(input.googleMapsUrl?.trim());
+  const hasManualAddress = Boolean(input.address?.trim());
   const parsedGoogleMapsUrl = input.googleMapsUrl ? parseGoogleMapsUrl(input.googleMapsUrl) : undefined;
   const hasResolvedPlaceDetails = Boolean(
     input.googlePlaceId ||
@@ -76,9 +81,12 @@ function createPlaceFromInput(
     name: input.title,
     category: input.type,
     address: input.address || undefined,
-    lat: hasGoogleMapsUrl ? input.lat : input.lat ?? existingPlace?.lat,
-    lng: hasGoogleMapsUrl ? input.lng : input.lng ?? existingPlace?.lng,
-    googlePlaceId: input.googlePlaceId || mapsPreview?.googlePlaceId || existingPlace?.googlePlaceId,
+    lat: hasGoogleMapsUrl || hasManualAddress ? input.lat : input.lat ?? existingPlace?.lat,
+    lng: hasGoogleMapsUrl || hasManualAddress ? input.lng : input.lng ?? existingPlace?.lng,
+    googlePlaceId:
+      input.googlePlaceId ||
+      mapsPreview?.googlePlaceId ||
+      (hasManualAddress ? undefined : existingPlace?.googlePlaceId),
     googleMapsUrl: fallbackGoogleMapsUrl,
     mapPreviewUrl: mapsPreview?.mapPreviewUrl,
     source: mapsPreview?.source ?? existingPlace?.source ?? "manual",
