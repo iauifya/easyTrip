@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 import { createRoutePreviewModel } from "@/lib/routes/route-preview";
 import {
   formatDistanceMeters,
@@ -12,14 +16,16 @@ const tilePattern = {
   backgroundSize: "28px 28px",
 };
 
-const markerPositions = [
-  { left: "14%", top: "20%" },
-  { left: "54%", top: "24%" },
-  { left: "36%", top: "58%" },
-  { left: "70%", top: "78%" },
-  { left: "22%", top: "82%" },
-  { left: "82%", top: "44%" },
-];
+function getTooltipPlacement(x: number, y: number) {
+  const prefersLeft = x > 58;
+  const prefersAbove = y > 62;
+
+  return {
+    horizontal: prefersLeft ? "left" : "right",
+    vertical: prefersAbove ? "above" : "middle",
+    textAlign: prefersLeft ? "right" : "left",
+  } as const;
+}
 
 function getLegStatusLabel(leg: ReturnType<typeof createRoutePreviewModel>["legs"][number]) {
   if (leg.estimatedMinutes) {
@@ -72,8 +78,12 @@ export function RoutePreview({
   isEstimating?: boolean;
   items: ItineraryItem[];
 }) {
+  const [activeStopId, setActiveStopId] = useState<string | undefined>();
   const model = createRoutePreviewModel(items, estimates, unavailableLegs);
-  const previewStops = model.stops.slice(0, markerPositions.length);
+  const previewStops = model.stops;
+  const routePoints = previewStops
+    .map((stop) => `${(stop.mapPosition.x * 3.6).toFixed(1)},${(stop.mapPosition.y * 3).toFixed(1)}`)
+    .join(" ");
 
   if (model.stops.length === 0) {
     return (
@@ -122,9 +132,19 @@ export function RoutePreview({
               {isEstimating ? "正在估算移動時間..." : estimateMessage}
             </p>
           ) : null}
+
+          {model.projectedStopCount >= 2 ? (
+            <p className="border-2 border-[#d8cbb6] bg-[#fffdf7] px-3 py-2 text-xs font-black text-[#1a5b4f]">
+              依 {model.projectedStopCount} 個座標繪製，北方在上、東方在右。
+            </p>
+          ) : (
+            <p className="border-2 border-[#d8cbb6] bg-[#fffdf7] px-3 py-2 text-xs font-black text-[#7c4b32]">
+              缺少足夠座標，目前以行程順序示意；貼上可解析的 Google Maps 地點後會校正方位。
+            </p>
+          )}
         </div>
 
-        <div className="relative mt-5 min-h-[300px] flex-1 overflow-hidden border-2 border-[#d8cbb6] bg-[#fbf8f0]">
+        <div className="relative mt-5 min-h-[360px] flex-1 overflow-hidden border-2 border-[#d8cbb6] bg-[#fbf8f0]">
           <div className="absolute inset-0 opacity-45" style={tilePattern} />
           <div className="absolute left-[8%] right-[8%] top-[22%] border-t-2 border-dashed border-[#cfc2aa]" />
           <div className="absolute left-[8%] right-[8%] top-[54%] border-t-2 border-dashed border-[#cfc2aa]" />
@@ -140,75 +160,64 @@ export function RoutePreview({
                 <path d="M0,0 L8,4 L0,8 Z" fill="#1a5b4f" />
               </marker>
             </defs>
-            <path
-              d="M76 72 C112 62, 148 66, 184 92 S232 140, 206 170 S168 212, 236 244"
+            <polyline
+              points={routePoints}
               fill="none"
               markerEnd="url(#route-preview-arrow)"
-              stroke="#1a5b4f"
+              stroke={model.projectedStopCount >= 2 ? "#1a5b4f" : "#53635f"}
               strokeLinecap="round"
               strokeLinejoin="round"
-              strokeWidth="8"
-            />
-            <path
-              d="M184 92 C202 86, 222 90, 240 104"
-              fill="none"
-              stroke="#d9b75f"
-              strokeDasharray="8 8"
-              strokeLinecap="round"
               strokeWidth="6"
             />
           </svg>
 
           {previewStops.map((stop, index) => {
-            const position = markerPositions[index];
+            const position = stop.mapPosition;
+            const placement = getTooltipPlacement(position.x, position.y);
+            const isActive = activeStopId === stop.id;
 
             return (
               <div
                 key={stop.id}
-                className="absolute"
+                className={`absolute ${isActive ? "z-50" : "z-20"} focus-within:z-50 hover:z-50`}
                 style={{
-                  left: position.left,
-                  top: position.top,
+                  left: `${position.x}%`,
+                  top: `${position.y}%`,
                   transform: "translate(-50%, -50%)",
                 }}
               >
-                <span
-                  className={`grid size-11 place-items-center border-2 border-[#183833] text-base font-black text-white shadow-[2px_2px_0_#183833] ${
+                <button
+                  type="button"
+                  aria-expanded={isActive}
+                  aria-label={`${stop.title} ${stop.timeLabel}`}
+                  onClick={() => setActiveStopId((current) => (current === stop.id ? undefined : stop.id))}
+                  className={`peer grid size-11 place-items-center border-2 border-[#183833] text-base font-black text-white shadow-[2px_2px_0_#183833] ${
                     stop.hasGoogleMapsUrl ? "bg-[#b43c2f]" : "bg-[#53635f]"
                   }`}
                 >
                   {index + 1}
-                </span>
+                </button>
                 <span
-                  className={`absolute top-0 hidden min-w-36 max-w-44 border-2 border-[#d8cbb6] bg-[#fffdf7] px-3 py-2 shadow-[2px_2px_0_#d8cbb6] sm:block ${
-                    index % 2 === 1 ? "right-10" : "left-10"
+                  className={`pointer-events-none absolute z-[60] border-2 border-[#d8cbb6] bg-[#fffdf7] px-2.5 py-2 shadow-[2px_2px_0_#d8cbb6] transition sm:opacity-0 sm:peer-focus:opacity-100 sm:peer-hover:opacity-100 ${
+                    isActive ? "block" : "hidden sm:block"
                   }`}
+                  style={{
+                    left: placement.horizontal === "right" ? "3.25rem" : undefined,
+                    right: placement.horizontal === "left" ? "3.25rem" : undefined,
+                    top: placement.vertical === "middle" ? "-0.25rem" : undefined,
+                    bottom: placement.vertical === "above" ? "3.25rem" : undefined,
+                    width: "10.5rem",
+                    textAlign: placement.textAlign,
+                  }}
                 >
-                  <span className="block truncate text-sm font-black">{stop.title}</span>
-                  <span className="mt-1 block whitespace-nowrap text-xs font-black text-[#7c4b32]">
+                  <span className="block truncate text-xs font-black leading-4">{stop.title}</span>
+                  <span className="mt-0.5 block whitespace-nowrap text-[11px] font-black leading-4 text-[#7c4b32]">
                     {stop.timeLabel}
                   </span>
                 </span>
               </div>
             );
           })}
-        </div>
-
-        <div className="mt-3 grid gap-2 sm:hidden">
-          {previewStops.map((stop, index) => (
-            <div
-              key={stop.id}
-              className="grid grid-cols-[2rem_1fr] gap-2 border-2 border-[#d8cbb6] bg-[#fffdf7] px-3 py-2 text-sm"
-            >
-              <span className="grid size-7 place-items-center border-2 border-[#183833] bg-[#b43c2f] text-xs font-black text-white">
-                {index + 1}
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate font-black">{stop.title}</span>
-                <span className="block text-xs font-black text-[#7c4b32]">{stop.timeLabel}</span>
-              </span>
-            </div>
-          ))}
         </div>
 
         <div className="mt-4 grid gap-2">

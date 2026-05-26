@@ -65,6 +65,66 @@ describe("route preview helpers", () => {
     });
   });
 
+  it("projects stop positions from coordinates with north up and east right", () => {
+    const model = createRoutePreviewModel([
+      item({
+        id: "station",
+        title: "Taipei Main Station",
+        place: {
+          id: "place-station",
+          name: "Taipei Main Station",
+          category: "transport",
+          lat: 25.04776,
+          lng: 121.51706,
+        },
+      }),
+      item({
+        id: "fika",
+        title: "Fika Fika Cafe",
+        place: {
+          id: "place-fika",
+          name: "Fika Fika Cafe",
+          category: "food",
+          lat: 25.05096,
+          lng: 121.53423,
+        },
+      }),
+      item({
+        id: "moca",
+        title: "Museum of Contemporary Art Taipei",
+        place: {
+          id: "place-moca",
+          name: "Museum of Contemporary Art Taipei",
+          category: "attraction",
+          lat: 25.05049,
+          lng: 121.51897,
+        },
+      }),
+      item({
+        id: "ningxia",
+        title: "Ningxia Night Market",
+        place: {
+          id: "place-ningxia",
+          name: "Ningxia Night Market",
+          category: "food",
+          lat: 25.05673,
+          lng: 121.51539,
+        },
+      }),
+    ]);
+    const byId = new Map(model.stops.map((stop) => [stop.id, stop.mapPosition]));
+    const station = byId.get("station")!;
+    const fika = byId.get("fika")!;
+    const moca = byId.get("moca")!;
+    const ningxia = byId.get("ningxia")!;
+
+    expect(model.projectedStopCount).toBe(4);
+    expect(fika.x).toBeGreaterThan(moca.x);
+    expect(ningxia.y).toBeLessThan(moca.y);
+    expect(station.x).toBeLessThan(fika.x);
+    expect(station.y).toBeGreaterThan(fika.y);
+  });
+
   it("marks linked legs as pending until an estimate is returned", () => {
     const items = [
       item({
