@@ -56,6 +56,21 @@ describe("travel estimate helpers", () => {
     });
   });
 
+  it("ignores 0,0 coordinates and falls back to address waypoints", () => {
+    expect(
+      createRoutesApiWaypoint({
+        id: "a",
+        title: "在家行旅",
+        address: "104臺北市中山區中山里中山北路二段65巷2弄3號",
+        lat: 0,
+        lng: 0,
+      }),
+    ).toEqual({
+      address: "在家行旅 104臺北市中山區中山里中山北路二段65巷2弄3號",
+    });
+    expect(hasExactRouteLocation({ id: "a", title: "在家行旅", lat: 0, lng: 0 })).toBe(false);
+  });
+
   it("requires exact route locations before estimating", () => {
     expect(hasExactRouteLocation({ id: "a", title: "Cafe", address: "Taipei" })).toBe(false);
     expect(hasExactRouteLocation({ id: "a", title: "Cafe", googlePlaceId: "place-123" })).toBe(true);
@@ -94,6 +109,23 @@ describe("travel estimate helpers", () => {
 
     expect(stop.googleMapsUrl).toBe("https://maps.app.goo.gl/example");
     expect(stop.lat).toBe(25.05);
+  });
+
+  it("adds departure time from day date and item end time", () => {
+    const stop = getRouteEstimateStop(
+      {
+        id: "item-a",
+        placeId: "place-a",
+        type: "food",
+        title: "Cafe",
+        startTime: "10:00",
+        endTime: "11:00",
+        stayMinutes: 60,
+      } satisfies ItineraryItem,
+      "2026-06-01",
+    );
+
+    expect(stop.departureTime).toBe("2026-06-01T11:00:00+08:00");
   });
 
   it("adds nearby address context for linked stops without exact coordinates", () => {

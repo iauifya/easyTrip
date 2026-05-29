@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  createGoogleMapsPlaceUrl,
   createGoogleMapsPreview,
   createGoogleMapsSearchUrl,
   getGoogleMapsPlaceName,
@@ -70,5 +71,48 @@ describe("google maps helpers", () => {
       createGoogleMapsSearchUrl("Taipei 101 Xinyi District Taipei"),
     );
     expect(preview?.mapPreviewUrl).toContain("output=embed");
+  });
+
+  it("builds searchable Google Maps URLs for address-only places", () => {
+    expect(
+      createGoogleMapsPlaceUrl({
+        title: "Taipei 101",
+        address: "台北市信義區信義路五段7號",
+      }),
+    ).toBe(
+      "https://www.google.com/maps/search/?api=1&query=Taipei+101+%E5%8F%B0%E5%8C%97%E5%B8%82%E4%BF%A1%E7%BE%A9%E5%8D%80%E4%BF%A1%E7%BE%A9%E8%B7%AF%E4%BA%94%E6%AE%B57%E8%99%9F",
+    );
+  });
+
+  it("falls back to address search when a stored Google Maps URL points at 0,0", () => {
+    expect(
+      createGoogleMapsPlaceUrl({
+        title: "在家行旅",
+        address: "104臺北市中山區中山里中山北路二段65巷2弄3號",
+        googleMapsUrl: "https://www.google.com/maps/place/0%C2%B000'00.0%22N+0%C2%B000'00.0%22E/@0,0,17z",
+        lat: 0,
+        lng: 0,
+      }),
+    ).toBe(
+      "https://www.google.com/maps/search/?api=1&query=%E5%9C%A8%E5%AE%B6%E8%A1%8C%E6%97%85+104%E8%87%BA%E5%8C%97%E5%B8%82%E4%B8%AD%E5%B1%B1%E5%8D%80%E4%B8%AD%E5%B1%B1%E9%87%8C%E4%B8%AD%E5%B1%B1%E5%8C%97%E8%B7%AF%E4%BA%8C%E6%AE%B565%E5%B7%B72%E5%BC%843%E8%99%9F",
+    );
+  });
+
+  it("ignores 0,0 Google Maps URLs in previews when address data exists", () => {
+    const preview = createGoogleMapsPreview({
+      title: "在家行旅",
+      address: "104臺北市中山區中山里中山北路二段65巷2弄3號",
+      googleMapsUrl: "https://www.google.com/maps/place/0%C2%B000'00.0%22N+0%C2%B000'00.0%22E/@0,0,17z",
+      lat: 0,
+      lng: 0,
+    });
+
+    expect(preview).toMatchObject({
+      displayQuery: "在家行旅 104臺北市中山區中山里中山北路二段65巷2弄3號",
+      source: "place_search",
+    });
+    expect(preview?.mapPreviewUrl).toContain(
+      "%E5%9C%A8%E5%AE%B6%E8%A1%8C%E6%97%85+104%E8%87%BA%E5%8C%97%E5%B8%82",
+    );
   });
 });

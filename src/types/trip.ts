@@ -8,7 +8,7 @@ export type ItineraryItemType =
   | "shopping"
   | "rest";
 
-export type TravelMethod = "walk" | "transit" | "taxi";
+export type TravelMethod = "walk" | "transit" | "drive" | "taxi";
 
 export type Trip = {
   id: string;

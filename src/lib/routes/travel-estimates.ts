@@ -4,6 +4,9 @@ import { createGoogleMapsSearchUrl } from "@/lib/places/google-maps";
 export type RouteEstimateStop = {
   id: string;
   title: string;
+  startTime?: string;
+  endTime?: string;
+  departureTime?: string;
   address?: string;
   googlePlaceId?: string;
   googleMapsUrl?: string;
@@ -35,10 +38,47 @@ export type RouteEstimatesResponse = {
   message?: string;
 };
 
-export function getRouteEstimateStop(item: ItineraryItem): RouteEstimateStop {
+export const routeTravelMethods = ["walk", "transit", "drive"] as const satisfies readonly TravelMethod[];
+
+export function getRouteTravelMethodLabel(method: TravelMethod) {
+  if (method === "transit") {
+    return "大眾運輸";
+  }
+
+  if (method === "drive" || method === "taxi") {
+    return "開車";
+  }
+
+  return "步行";
+}
+
+export function getRouteTravelMethodIcon(method: TravelMethod) {
+  if (method === "transit") {
+    return "捷";
+  }
+
+  if (method === "drive" || method === "taxi") {
+    return "車";
+  }
+
+  return "走";
+}
+
+function createDepartureTime(date: string | undefined, time: string | undefined) {
+  if (!date || !time) {
+    return undefined;
+  }
+
+  return `${date}T${time}:00+08:00`;
+}
+
+export function getRouteEstimateStop(item: ItineraryItem, date?: string): RouteEstimateStop {
   return {
     id: item.id,
     title: item.title,
+    startTime: item.startTime,
+    endTime: item.endTime,
+    departureTime: createDepartureTime(date, item.endTime),
     address: item.place?.address,
     googlePlaceId: item.place?.googlePlaceId,
     googleMapsUrl: item.place?.googleMapsUrl,
@@ -68,8 +108,8 @@ function getAddressContext(stops: RouteEstimateStop[], index: number) {
   return undefined;
 }
 
-export function getRouteEstimateStops(items: ItineraryItem[]) {
-  const stops = items.map(getRouteEstimateStop);
+export function getRouteEstimateStops(items: ItineraryItem[], date?: string) {
+  const stops = items.map((item) => getRouteEstimateStop(item, date));
 
   return stops.map((stop, index) => {
     if (hasExactRouteLocation(stop) || !stop.googleMapsUrl || !stop.title.trim()) {
@@ -96,6 +136,10 @@ export function getWaypointQuery(stop: RouteEstimateStop) {
   return [stop.title, stop.address].filter(Boolean).join(" ").trim();
 }
 
+function hasUsableCoordinates(lat: number | undefined, lng: number | undefined) {
+  return typeof lat === "number" && typeof lng === "number" && !(lat === 0 && lng === 0);
+}
+
 export function createRoutesApiWaypoint(stop: RouteEstimateStop) {
   if (stop.googlePlaceId) {
     return {
@@ -103,7 +147,7 @@ export function createRoutesApiWaypoint(stop: RouteEstimateStop) {
     };
   }
 
-  if (typeof stop.lat === "number" && typeof stop.lng === "number") {
+  if (hasUsableCoordinates(stop.lat, stop.lng)) {
     return {
       location: {
         latLng: {
@@ -120,7 +164,7 @@ export function createRoutesApiWaypoint(stop: RouteEstimateStop) {
 }
 
 export function hasExactRouteLocation(stop: RouteEstimateStop) {
-  return Boolean(stop.googlePlaceId || (typeof stop.lat === "number" && typeof stop.lng === "number"));
+  return Boolean(stop.googlePlaceId || hasUsableCoordinates(stop.lat, stop.lng));
 }
 
 export function parseGoogleDurationSeconds(duration: string | undefined) {

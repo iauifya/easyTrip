@@ -1,8 +1,9 @@
 export const taiwanWindowPattern = {
+  backgroundColor: "rgba(26, 91, 79, 0.024)",
   backgroundImage:
-    "linear-gradient(45deg, rgba(26, 91, 79, 0.08) 25%, transparent 25%), linear-gradient(-45deg, rgba(26, 91, 79, 0.08) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(26, 91, 79, 0.08) 75%), linear-gradient(-45deg, transparent 75%, rgba(26, 91, 79, 0.08) 75%)",
-  backgroundPosition: "0 0, 0 12px, 12px -12px, -12px 0",
-  backgroundSize: "24px 24px",
+    "linear-gradient(90deg, transparent 0 34px, rgba(26, 91, 79, 0.075) 34px 38px, transparent 38px), linear-gradient(0deg, transparent 0 34px, rgba(26, 91, 79, 0.075) 34px 38px, transparent 38px), radial-gradient(circle at 50% 29%, transparent 0 11px, rgba(26, 91, 79, 0.085) 11.5px 14px, transparent 14.5px), radial-gradient(circle at 71% 50%, transparent 0 11px, rgba(26, 91, 79, 0.085) 11.5px 14px, transparent 14.5px), radial-gradient(circle at 50% 71%, transparent 0 11px, rgba(26, 91, 79, 0.085) 11.5px 14px, transparent 14.5px), radial-gradient(circle at 29% 50%, transparent 0 11px, rgba(26, 91, 79, 0.085) 11.5px 14px, transparent 14.5px), radial-gradient(circle at 0 0, transparent 0 17px, rgba(26, 91, 79, 0.065) 17.5px 20px, transparent 20.5px), radial-gradient(circle at 100% 0, transparent 0 17px, rgba(26, 91, 79, 0.065) 17.5px 20px, transparent 20.5px), radial-gradient(circle at 0 100%, transparent 0 17px, rgba(26, 91, 79, 0.065) 17.5px 20px, transparent 20.5px), radial-gradient(circle at 100% 100%, transparent 0 17px, rgba(26, 91, 79, 0.065) 17.5px 20px, transparent 20.5px), radial-gradient(circle at 50% 50%, rgba(26, 91, 79, 0.07) 0 1px, transparent 1.5px)",
+  backgroundPosition: "0 0",
+  backgroundSize: "72px 72px",
 };
 
 export const taiwanTilePattern = {

@@ -1,5 +1,10 @@
 import { timeToMinutes } from "@/lib/time/itinerary";
-import type { RouteTravelEstimate, UnavailableRouteLeg } from "@/lib/routes/travel-estimates";
+import { createGoogleMapsPlaceUrl } from "@/lib/places/google-maps";
+import {
+  routeTravelMethods,
+  type RouteTravelEstimate,
+  type UnavailableRouteLeg,
+} from "@/lib/routes/travel-estimates";
 import type { ItineraryItem } from "@/types/trip";
 
 export type RoutePreviewStop = {
@@ -24,6 +29,9 @@ export type RoutePreviewLeg = {
   gapMinutes: number;
   estimatedMinutes?: number;
   distanceMeters?: number;
+  estimates: RouteTravelEstimate[];
+  bestEstimate?: RouteTravelEstimate;
+  isTight: boolean;
   status: "estimated" | "pending" | "needs_place" | "invalid_place";
 };
 
@@ -32,6 +40,9 @@ export type RoutePreviewModel = {
   legs: RoutePreviewLeg[];
   linkedStopCount: number;
   projectedStopCount: number;
+  estimatedLegCount: number;
+  totalTravelMinutes: number;
+  tightLegCount: number;
   googleMapsDirectionsUrl?: string;
 };
 
@@ -45,7 +56,11 @@ const fallbackTimelinePositions = [
 ];
 
 function hasCoordinates(item: ItineraryItem) {
-  return typeof item.place?.lat === "number" && typeof item.place.lng === "number";
+  return (
+    typeof item.place?.lat === "number" &&
+    typeof item.place.lng === "number" &&
+    !(item.place.lat === 0 && item.place.lng === 0)
+  );
 }
 
 function getFallbackTimelinePosition(index: number, count: number) {
@@ -118,6 +133,30 @@ function getPlaceQuery(item: ItineraryItem) {
   return [item.title, item.place?.address].filter(Boolean).join(" ").trim();
 }
 
+function getGoogleMapsUrl(item: ItineraryItem) {
+  if (!hasRouteLocationInput(item)) {
+    return undefined;
+  }
+
+  return createGoogleMapsPlaceUrl({
+    title: item.title,
+    address: item.place?.address,
+    googlePlaceId: item.place?.googlePlaceId,
+    googleMapsUrl: item.place?.googleMapsUrl,
+    lat: item.place?.lat,
+    lng: item.place?.lng,
+  });
+}
+
+function hasRouteLocationInput(item: ItineraryItem) {
+  return Boolean(
+    item.place?.googlePlaceId ||
+      hasCoordinates(item) ||
+      item.place?.googleMapsUrl ||
+      item.place?.address,
+  );
+}
+
 function getLocationLabel(item: ItineraryItem) {
   if (item.place?.address) {
     return item.place.address;
@@ -164,7 +203,15 @@ export function createRoutePreviewModel(
   estimates: RouteTravelEstimate[] = [],
   unavailableLegs: UnavailableRouteLeg[] = [],
 ): RoutePreviewModel {
-  const estimateByLegId = new Map(estimates.map((estimate) => [estimate.id, estimate]));
+  const estimatesByLegId = new Map<string, RouteTravelEstimate[]>();
+
+  for (const estimate of estimates) {
+    const legEstimates = estimatesByLegId.get(estimate.id) ?? [];
+
+    legEstimates.push(estimate);
+    estimatesByLegId.set(estimate.id, legEstimates);
+  }
+
   const unavailableLegIds = new Set(unavailableLegs.map((leg) => leg.id));
   const positionByItemId = new Map(projectStops(items).map((position) => [position.id, position]));
   const stops = items.map<RoutePreviewStop>((item) => ({
@@ -172,7 +219,7 @@ export function createRoutePreviewModel(
     title: item.title,
     timeLabel: `${item.startTime} - ${item.endTime}`,
     locationLabel: getLocationLabel(item),
-    hasGoogleMapsUrl: Boolean(item.place?.googleMapsUrl),
+    hasGoogleMapsUrl: Boolean(getGoogleMapsUrl(item)),
     lat: item.place?.lat,
     lng: item.place?.lng,
     mapPosition: positionByItemId.get(item.id) ?? {
@@ -184,21 +231,35 @@ export function createRoutePreviewModel(
   const legs = items.slice(0, -1).map<RoutePreviewLeg>((item, index) => {
     const nextItem = items[index + 1];
     const id = `${item.id}-${nextItem.id}`;
-    const estimate = estimateByLegId.get(id);
+    const legEstimates = [...(estimatesByLegId.get(id) ?? [])].sort(
+      (first, second) =>
+        routeTravelMethods.indexOf(first.method as (typeof routeTravelMethods)[number]) -
+        routeTravelMethods.indexOf(second.method as (typeof routeTravelMethods)[number]),
+    );
+    const bestEstimate = legEstimates.reduce<RouteTravelEstimate | undefined>(
+      (best, estimate) =>
+        !best || estimate.estimatedMinutes < best.estimatedMinutes ? estimate : best,
+      undefined,
+    );
     const gapMinutes = Math.max(0, timeToMinutes(nextItem.startTime) - timeToMinutes(item.endTime));
+    const estimatedMinutes = bestEstimate?.estimatedMinutes;
+    const isTight = typeof estimatedMinutes === "number" && estimatedMinutes + 10 > gapMinutes;
 
     return {
       id,
       fromTitle: item.title,
       toTitle: nextItem.title,
       gapMinutes,
-      estimatedMinutes: estimate?.estimatedMinutes,
-      distanceMeters: estimate?.distanceMeters,
-      status: estimate
+      estimatedMinutes,
+      distanceMeters: bestEstimate?.distanceMeters,
+      estimates: legEstimates,
+      bestEstimate,
+      isTight,
+      status: legEstimates.length > 0
         ? "estimated"
         : unavailableLegIds.has(id)
           ? "invalid_place"
-          : item.place?.googleMapsUrl && nextItem.place?.googleMapsUrl
+          : hasRouteLocationInput(item) && hasRouteLocationInput(nextItem)
             ? "pending"
             : "needs_place",
     };
@@ -209,6 +270,9 @@ export function createRoutePreviewModel(
     legs,
     linkedStopCount: stops.filter((stop) => stop.hasGoogleMapsUrl).length,
     projectedStopCount: stops.filter((stop) => stop.mapPosition.source === "coordinates").length,
+    estimatedLegCount: legs.filter((leg) => leg.status === "estimated").length,
+    totalTravelMinutes: legs.reduce((sum, leg) => sum + (leg.bestEstimate?.estimatedMinutes ?? 0), 0),
+    tightLegCount: legs.filter((leg) => leg.isTight).length,
     googleMapsDirectionsUrl: buildGoogleMapsDirectionsUrl(items),
   };
 }

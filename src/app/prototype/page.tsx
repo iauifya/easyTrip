@@ -3,6 +3,7 @@ import { sampleTrip } from "@/data/sample-trip";
 import { getDayWarnings, getNextStopInsight } from "@/lib/itinerary/day-insights";
 import { categoryLabels, paceLabels } from "@/lib/trips/labels";
 import { getSortedItems } from "@/lib/time/itinerary";
+import { taiwanWindowPattern } from "@/lib/ui/taiwan-style";
 
 const day = sampleTrip.days[0];
 const items = getSortedItems(day.items);
@@ -16,13 +17,6 @@ const placeNotes = [
   "入口從民生西路側進去",
 ];
 
-const windowPattern = {
-  backgroundImage:
-    "linear-gradient(45deg, rgba(26, 91, 79, 0.08) 25%, transparent 25%), linear-gradient(-45deg, rgba(26, 91, 79, 0.08) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(26, 91, 79, 0.08) 75%), linear-gradient(-45deg, transparent 75%, rgba(26, 91, 79, 0.08) 75%)",
-  backgroundPosition: "0 0, 0 12px, 12px -12px, -12px 0",
-  backgroundSize: "24px 24px",
-};
-
 const tilePattern = {
   backgroundImage:
     "radial-gradient(circle at 12px 12px, rgba(196, 62, 48, 0.16) 1.5px, transparent 1.5px), radial-gradient(circle at 4px 20px, rgba(12, 65, 96, 0.12) 1px, transparent 1px)",
@@ -33,7 +27,7 @@ export default function PrototypePage() {
   return (
     <main className="min-h-screen bg-[#f6f3ea] text-[#183833]">
       <section className="relative overflow-hidden border-b border-[#d8cbb6] bg-[#fbf8f0]">
-        <div className="absolute inset-0 opacity-80" style={windowPattern} />
+        <div className="absolute inset-0 opacity-80" style={taiwanWindowPattern} />
         <div className="relative mx-auto grid min-h-[88vh] w-full max-w-[88rem] gap-8 px-5 py-6 sm:px-8 lg:grid-cols-[1.18fr_0.82fr] lg:items-start lg:px-10">
           <div className="flex flex-col gap-8">
             <header className="flex flex-col gap-4 border-b-2 border-[#1a5b4f] pb-5 sm:flex-row sm:items-center sm:justify-between">

@@ -74,6 +74,10 @@ function parseCoordinates(url: URL) {
   return { lat, lng };
 }
 
+function hasUsableCoordinates(lat: number | undefined, lng: number | undefined) {
+  return typeof lat === "number" && typeof lng === "number" && !(lat === 0 && lng === 0);
+}
+
 export function parseGoogleMapsUrl(value: string) {
   const url = getSafeUrl(value.trim());
 
@@ -133,6 +137,32 @@ export function createGoogleMapsEmbedUrl(query: string, googlePlaceId?: string) 
   return `https://www.google.com/maps?${params.toString()}`;
 }
 
+export function createGoogleMapsPlaceUrl(input: {
+  title?: string;
+  address?: string;
+  googlePlaceId?: string;
+  googleMapsUrl?: string;
+  lat?: number;
+  lng?: number;
+}) {
+  const trimmedUrl = input.googleMapsUrl?.trim() ?? "";
+  const addressQuery = [input.title?.trim(), input.address?.trim()].filter(Boolean).join(" ");
+
+  if (trimmedUrl && isGoogleMapsUrl(trimmedUrl)) {
+    const parsedUrl = parseGoogleMapsUrl(trimmedUrl);
+    const isZeroCoordinateUrl = parsedUrl?.lat === 0 && parsedUrl?.lng === 0;
+
+    if (!addressQuery || !isZeroCoordinateUrl) {
+      return parsedUrl?.url ?? trimmedUrl;
+    }
+  }
+
+  const coordinateQuery = hasUsableCoordinates(input.lat, input.lng) ? `${input.lat},${input.lng}` : "";
+  const query = coordinateQuery || addressQuery;
+
+  return query ? createGoogleMapsSearchUrl(query, input.googlePlaceId) : undefined;
+}
+
 export function createGoogleMapsPreview(input: {
   title: string;
   address?: string;
@@ -145,14 +175,16 @@ export function createGoogleMapsPreview(input: {
   const trimmedAddress = input.address?.trim() ?? "";
   const trimmedUrl = input.googleMapsUrl?.trim() ?? "";
   const parsedUrl = trimmedUrl ? parseGoogleMapsUrl(trimmedUrl) : undefined;
-  const coordinateQuery =
-    typeof input.lat === "number" && typeof input.lng === "number"
-      ? `${input.lat},${input.lng}`
-      : "";
+  const shouldIgnoreParsedUrl =
+    parsedUrl?.lat === 0 &&
+    parsedUrl?.lng === 0 &&
+    Boolean([trimmedTitle, trimmedAddress].filter(Boolean).join(" "));
+  const usableParsedUrl = shouldIgnoreParsedUrl ? undefined : parsedUrl;
+  const coordinateQuery = hasUsableCoordinates(input.lat, input.lng) ? `${input.lat},${input.lng}` : "";
   const displayQuery =
-    parsedUrl?.query || [trimmedTitle, trimmedAddress].filter(Boolean).join(" ");
+    usableParsedUrl?.query || [trimmedTitle, trimmedAddress].filter(Boolean).join(" ");
   const previewQuery = coordinateQuery || displayQuery;
-  const googlePlaceId = input.googlePlaceId || parsedUrl?.googlePlaceId;
+  const googlePlaceId = input.googlePlaceId || usableParsedUrl?.googlePlaceId;
 
   if (!previewQuery) {
     return undefined;
@@ -161,8 +193,16 @@ export function createGoogleMapsPreview(input: {
   return {
     displayQuery,
     googlePlaceId,
-    googleMapsUrl: parsedUrl?.url ?? createGoogleMapsSearchUrl(previewQuery, googlePlaceId),
+    googleMapsUrl:
+      createGoogleMapsPlaceUrl({
+        title: trimmedTitle,
+        address: trimmedAddress,
+        googlePlaceId,
+        googleMapsUrl: usableParsedUrl?.url,
+        lat: input.lat,
+        lng: input.lng,
+      }) ?? createGoogleMapsSearchUrl(previewQuery, googlePlaceId),
     mapPreviewUrl: createGoogleMapsEmbedUrl(previewQuery, googlePlaceId),
-    source: parsedUrl ? "google_maps_url" : "place_search",
+    source: usableParsedUrl ? "google_maps_url" : "place_search",
   };
 }

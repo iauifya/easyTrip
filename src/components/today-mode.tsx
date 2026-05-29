@@ -10,10 +10,12 @@ import {
 } from "@/lib/itinerary/day-insights";
 import {
   formatDistanceMeters,
+  getRouteTravelMethodLabel,
   getRouteEstimateStops,
   type RouteEstimatesResponse,
   type RouteTravelEstimate,
 } from "@/lib/routes/travel-estimates";
+import { createGoogleMapsPlaceUrl } from "@/lib/places/google-maps";
 import { categoryLabels, paceLabels } from "@/lib/trips/labels";
 import { getSortedItems, timeToMinutes } from "@/lib/time/itinerary";
 import { getLocalDateString, getTodayTripDay } from "@/lib/trips/today";
@@ -35,6 +37,29 @@ function getItemStatus(item: ItineraryItem, currentTime: string) {
   }
 
   return "active";
+}
+
+function getItemGoogleMapsUrl(item: ItineraryItem) {
+  if (
+    !item.place ||
+    !(
+      item.place.googlePlaceId ||
+      (typeof item.place.lat === "number" && typeof item.place.lng === "number") ||
+      item.place.googleMapsUrl ||
+      item.place.address
+    )
+  ) {
+    return undefined;
+  }
+
+  return createGoogleMapsPlaceUrl({
+    title: item.title,
+    address: item.place.address,
+    googlePlaceId: item.place.googlePlaceId,
+    googleMapsUrl: item.place.googleMapsUrl,
+    lat: item.place.lat,
+    lng: item.place.lng,
+  });
 }
 
 function getStatusLabel(status: string) {
@@ -77,6 +102,16 @@ function getMoveLegId(items: ItineraryItem[], nextIndex: number, nextStatus: str
   return undefined;
 }
 
+function getBestEstimate(estimates: RouteTravelEstimate[], legId: string | undefined) {
+  if (!legId) {
+    return undefined;
+  }
+
+  return estimates
+    .filter((estimate) => estimate.id === legId)
+    .sort((first, second) => first.estimatedMinutes - second.estimatedMinutes)[0];
+}
+
 export function TodayMode({ tripId }: { tripId: string }) {
   const [currentTime, setCurrentTime] = useState(() => getCurrentTimeString());
   const [routeEstimates, setRouteEstimates] = useState<RouteTravelEstimate[]>([]);
@@ -113,15 +148,13 @@ export function TodayMode({ tripId }: { tripId: string }) {
   }, [day, setSelectedDayId, setSelectedTripId, tripId]);
 
   const items = getSortedItems(day?.items ?? []);
-  const routeEstimateStopsJson = JSON.stringify(getRouteEstimateStops(items));
+  const routeEstimateStopsJson = JSON.stringify(getRouteEstimateStops(items, day?.date));
   const nextStop = getNextStopInsight(items, currentTime);
   const progress = getDayProgress(items, currentTime);
   const warnings = trip ? getDayWarnings(items, trip.pace) : [];
   const nextItem = nextStop.item;
   const moveLegId = getMoveLegId(items, nextStop.itemIndex, nextStop.status);
-  const moveEstimate = moveLegId
-    ? routeEstimates.find((estimate) => estimate.id === moveLegId)
-    : undefined;
+  const moveEstimate = getBestEstimate(routeEstimates, moveLegId);
   const remainingItems = items.filter((item) => getItemStatus(item, currentTime) !== "done");
 
   useEffect(() => {
@@ -244,7 +277,7 @@ export function TodayMode({ tripId }: { tripId: string }) {
                   </p>
                   {moveEstimate ? (
                     <p className="mt-1 text-xs font-black text-[#7c4b32]">
-                      {formatDistanceMeters(moveEstimate.distanceMeters)}
+                      {getRouteTravelMethodLabel(moveEstimate.method)} · {formatDistanceMeters(moveEstimate.distanceMeters)}
                     </p>
                   ) : null}
                 </div>
@@ -286,6 +319,7 @@ export function TodayMode({ tripId }: { tripId: string }) {
                   {remainingItems.length > 0 ? (
                     remainingItems.map((item) => {
                       const status = getItemStatus(item, currentTime);
+                      const itemGoogleMapsUrl = getItemGoogleMapsUrl(item);
 
                       return (
                         <div key={item.id} className="border-b border-white/10 pb-3 last:border-b-0 last:pb-0">
@@ -295,9 +329,9 @@ export function TodayMode({ tripId }: { tripId: string }) {
                                 {item.startTime} - {item.endTime} · {categoryLabels[item.type]}
                               </p>
                               <p className="mt-1 font-black">{item.title}</p>
-                              {item.place?.googleMapsUrl ? (
+                              {itemGoogleMapsUrl ? (
                                 <a
-                                  href={item.place.googleMapsUrl}
+                                  href={itemGoogleMapsUrl}
                                   target="_blank"
                                   rel="noreferrer"
                                   className="mt-2 inline-flex border border-white/25 px-2 py-1 text-xs font-black text-[#f2d179]"

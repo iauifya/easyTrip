@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
@@ -18,6 +19,7 @@ import {
 import { getDefaultStayMinutes, suggestItemType } from "@/lib/itinerary/item-suggestions";
 import {
   createGoogleMapsPreview,
+  createGoogleMapsPlaceUrl,
   getGoogleMapsPlaceName,
   type GoogleMapsPreview,
 } from "@/lib/places/google-maps";
@@ -31,9 +33,13 @@ import {
   type RouteTravelEstimate,
   type UnavailableRouteLeg,
 } from "@/lib/routes/travel-estimates";
+import { taiwanWindowPattern } from "@/lib/ui/taiwan-style";
 import { RoutePreview } from "@/components/route-preview";
 import { useTripStore } from "@/store/trip-store";
 import type { ItineraryItem, ItineraryItemType, TripPace } from "@/types/trip";
+
+const lateNightBoundaryMinutes = 20 * 60;
+const earlyMorningBoundaryMinutes = 6 * 60;
 
 const itemTypeOptions: Array<{
   value: ItineraryItemType;
@@ -74,13 +80,6 @@ const placeNotes = [
   "入口從民生西路側進去",
 ];
 
-const windowPattern = {
-  backgroundImage:
-    "linear-gradient(45deg, rgba(26, 91, 79, 0.08) 25%, transparent 25%), linear-gradient(-45deg, rgba(26, 91, 79, 0.08) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(26, 91, 79, 0.08) 75%), linear-gradient(-45deg, transparent 75%, rgba(26, 91, 79, 0.08) 75%)",
-  backgroundPosition: "0 0, 0 12px, 12px -12px, -12px 0",
-  backgroundSize: "24px 24px",
-};
-
 function getFieldError(error: unknown) {
   return typeof error === "object" && error && "message" in error
     ? String(error.message)
@@ -104,6 +103,29 @@ function toFormValues(item: ItineraryItem): ItineraryItemInput {
     lng: item.place?.lng,
     note: item.note ?? "",
   };
+}
+
+function getItemGoogleMapsUrl(item: ItineraryItem) {
+  if (
+    !item.place ||
+    !(
+      item.place.googlePlaceId ||
+      (typeof item.place.lat === "number" && typeof item.place.lng === "number") ||
+      item.place.googleMapsUrl ||
+      item.place.address
+    )
+  ) {
+    return undefined;
+  }
+
+  return createGoogleMapsPlaceUrl({
+    title: item.title,
+    address: item.place.address,
+    googlePlaceId: item.place.googlePlaceId,
+    googleMapsUrl: item.place.googleMapsUrl,
+    lat: item.place.lat,
+    lng: item.place.lng,
+  });
 }
 
 function getOpenGapRecommendation(
@@ -177,6 +199,22 @@ function getNextScheduleConflict(
   return undefined;
 }
 
+function getCrossDayOffsetForNewItem(
+  values: ItineraryItemInput,
+  items: ItineraryItem[],
+) {
+  const startMinutes = timeToMinutes(values.startTime);
+  const endMinutes = timeToMinutes(values.endTime);
+  const lastEndMinutes = items.length > 0 ? timeToMinutes(items.at(-1)?.endTime ?? "00:00") : 0;
+  const itemCrossesMidnight = endMinutes <= startMinutes;
+  const followsLateNightItem =
+    items.length > 0 &&
+    lastEndMinutes >= lateNightBoundaryMinutes &&
+    startMinutes < earlyMorningBoundaryMinutes;
+
+  return itemCrossesMidnight || followsLateNightItem ? 1 : 0;
+}
+
 function getWarningDetail(warningId: string, pace: TripPace) {
   const paceLabel = paceLabels[pace];
   const matchedPace = paceOptions.find((option) => option.value === pace);
@@ -233,10 +271,13 @@ function PlaceSearchPreview({ preview }: { preview?: GoogleMapsPreview }) {
 }
 
 export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: string }) {
+  const router = useRouter();
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(() => getCurrentTimeString());
   const [isScheduleEditorOpen, setIsScheduleEditorOpen] = useState(false);
   const [isMobileEditorOpen, setIsMobileEditorOpen] = useState(false);
+  const [pendingCrossDayItem, setPendingCrossDayItem] = useState<ItineraryItem | null>(null);
+  const [crossDayDaysToAdd, setCrossDayDaysToAdd] = useState(1);
   const [scheduleMessage, setScheduleMessage] = useState("");
   const [googleMapsLookupMessage, setGoogleMapsLookupMessage] = useState("");
   const [routeEstimates, setRouteEstimates] = useState<RouteTravelEstimate[]>([]);
@@ -324,8 +365,9 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
 
   const trip = trips.find((item) => item.id === tripId);
   const day = trip?.days.find((item) => item.id === dayId);
+  const dayIndex = trip?.days.findIndex((item) => item.id === dayId) ?? -1;
   const items = getSortedItems(day?.items ?? []);
-  const routeEstimateStopsJson = JSON.stringify(getRouteEstimateStops(items));
+  const routeEstimateStopsJson = JSON.stringify(getRouteEstimateStops(items, day?.date));
   const visibleRouteEstimates = items.length >= 2 ? routeEstimates : [];
   const visibleUnavailableRouteLegs = items.length >= 2 ? unavailableRouteLegs : [];
   const visibleRouteEstimateMessage = items.length >= 2 ? routeEstimateMessage : "";
@@ -653,6 +695,55 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
     }
   }
 
+  function addItemToDay(item: ItineraryItem, targetDayIndex: number, daysToAdd = 0) {
+    if (!trip) {
+      return false;
+    }
+
+    try {
+      const nextDayCount = Math.max(trip.days.length, trip.days.length + daysToAdd, targetDayIndex + 1);
+      const scheduledTrip =
+        nextDayCount > trip.days.length
+          ? adjustTripSchedule(trip, trip.startDate, nextDayCount)
+          : trip;
+      const targetDay = scheduledTrip.days[targetDayIndex];
+
+      if (!targetDay) {
+        return false;
+      }
+
+      updateTrip({
+        ...scheduledTrip,
+        days: scheduledTrip.days.map((tripDay) =>
+          tripDay.id === targetDay.id
+            ? { ...tripDay, items: [...tripDay.items, item] }
+            : tripDay,
+        ),
+      });
+      setSelectedDayId(targetDay.id);
+      router.push(`/trips/${tripId}/day/${targetDay.id}`);
+      return true;
+    } catch (error) {
+      setScheduleMessage(error instanceof Error ? error.message : "新增隔天行程失敗，請再試一次。");
+      return false;
+    }
+  }
+
+  function confirmCrossDayAdd() {
+    if (!pendingCrossDayItem || dayIndex < 0) {
+      return;
+    }
+
+    const targetDayIndex = dayIndex + 1;
+    const daysToAdd = Math.max(1, Math.min(13, crossDayDaysToAdd));
+
+    if (addItemToDay(pendingCrossDayItem, targetDayIndex, daysToAdd)) {
+      setPendingCrossDayItem(null);
+      setCrossDayDaysToAdd(1);
+      cancelEdit();
+    }
+  }
+
   function onSubmit(values: ItineraryItemInput) {
     const isMobileSubmission = shouldUseMobileEditor();
     const normalizedValues = isMobileSubmission
@@ -680,10 +771,31 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
       return;
     }
 
+    const itineraryItem = createItineraryItemFromInput(result.data, editingItem);
+
     if (editingItem) {
-      updateItineraryItem(tripId, dayId, createItineraryItemFromInput(result.data, editingItem));
+      updateItineraryItem(tripId, dayId, itineraryItem);
     } else {
-      addItineraryItem(tripId, dayId, createItineraryItemFromInput(result.data));
+      const crossDayOffset = getCrossDayOffsetForNewItem(result.data, items);
+
+      if (trip && dayIndex >= 0 && crossDayOffset > 0) {
+        const targetDayIndex = dayIndex + crossDayOffset;
+        const missingDayCount = Math.max(0, targetDayIndex + 1 - trip.days.length);
+
+        if (trip.days.length === 1 && missingDayCount > 0) {
+          setPendingCrossDayItem(itineraryItem);
+          setCrossDayDaysToAdd(missingDayCount);
+          setIsMobileEditorOpen(false);
+          return;
+        }
+
+        if (addItemToDay(itineraryItem, targetDayIndex, missingDayCount)) {
+          cancelEdit();
+        }
+        return;
+      }
+
+      addItineraryItem(tripId, dayId, itineraryItem);
     }
 
     cancelEdit();
@@ -878,7 +990,7 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
   return (
     <main className="min-h-screen bg-[#f6f3ea] text-[#183833]">
       <section className="relative overflow-hidden border-b border-[#d8cbb6] bg-[#fbf8f0]">
-        <div className="absolute inset-0 opacity-80" style={windowPattern} />
+        <div className="absolute inset-0 opacity-80" style={taiwanWindowPattern} />
         <div className="relative mx-auto w-full max-w-[88rem] px-5 py-6 sm:px-8 lg:px-10">
         <header className="border-b-2 border-[#1a5b4f] pb-6">
           <div className="grid gap-3 sm:flex sm:flex-wrap">
@@ -1094,6 +1206,7 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
               <div className="mt-5 space-y-3">
                 {items.map((item, index) => {
                   const isTight = tightGapItemIds.has(item.id);
+                  const itemGoogleMapsUrl = getItemGoogleMapsUrl(item);
 
                   return (
                     <article
@@ -1135,9 +1248,9 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                               {item.note}
                             </p>
                           ) : null}
-                          {item.place?.googleMapsUrl ? (
+                          {itemGoogleMapsUrl ? (
                             <a
-                              href={item.place.googleMapsUrl}
+                              href={itemGoogleMapsUrl}
                               target="_blank"
                               rel="noreferrer"
                               className="mt-3 inline-flex border-2 border-[#d8cbb6] bg-[#fffdf7] px-3 py-2 text-sm font-black text-[#1a5b4f] transition hover:border-[#1a5b4f]"
@@ -1199,6 +1312,47 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
         </div>
         </div>
       </section>
+      {pendingCrossDayItem ? (
+        <div className="fixed inset-0 z-[60] grid place-items-center bg-[#183833]/65 px-4">
+          <section className="w-full max-w-md border-2 border-[#183833] bg-[#fffdf7] p-5 text-[#183833] shadow-[8px_8px_0_#d9b75f]">
+            <p className="text-xs font-black tracking-[0.18em] text-[#b43c2f]">跨日行程</p>
+            <h2 className="mt-2 text-2xl font-black">即將新增隔天行程</h2>
+            <p className="mt-3 text-sm font-bold leading-6 text-[#53635f]">
+              這個行程時間已經超過晚上 12:00。確認後會先替這趟旅程新增天數，並把「{pendingCrossDayItem.title}」放到隔天。
+            </p>
+            <label className="mt-5 grid gap-2">
+              <span className="text-xs font-black tracking-[0.16em] text-[#7c4b32]">要新增幾天</span>
+              <input
+                type="number"
+                min={1}
+                max={13}
+                value={crossDayDaysToAdd}
+                onChange={(event) => setCrossDayDaysToAdd(Number(event.target.value))}
+                className="min-h-11 border-2 border-[#d8cbb6] bg-white px-3 py-2 text-sm font-black text-[#183833] outline-none focus:border-[#1a5b4f]"
+              />
+            </label>
+            <div className="mt-5 grid gap-2 sm:flex sm:justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setPendingCrossDayItem(null);
+                  setCrossDayDaysToAdd(1);
+                }}
+                className="min-h-11 border-2 border-[#d8cbb6] bg-[#fffdf7] px-4 py-2 text-sm font-black transition hover:border-[#b43c2f] hover:text-[#b43c2f]"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={confirmCrossDayAdd}
+                className="min-h-11 border-2 border-[#183833] bg-[#d9b75f] px-4 py-2 text-sm font-black text-[#183833] shadow-[3px_3px_0_#183833] transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#183833]"
+              >
+                確認新增
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
       {isMobileEditorOpen ? (
         <div className="fixed inset-0 z-50 lg:hidden" data-testid="mobile-editor-sheet">
           <button

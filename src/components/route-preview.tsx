@@ -5,6 +5,8 @@ import { useState } from "react";
 import { createRoutePreviewModel } from "@/lib/routes/route-preview";
 import {
   formatDistanceMeters,
+  getRouteTravelMethodIcon,
+  getRouteTravelMethodLabel,
   type RouteTravelEstimate,
   type UnavailableRouteLeg,
 } from "@/lib/routes/travel-estimates";
@@ -28,8 +30,8 @@ function getTooltipPlacement(x: number, y: number) {
 }
 
 function getLegStatusLabel(leg: ReturnType<typeof createRoutePreviewModel>["legs"][number]) {
-  if (leg.estimatedMinutes) {
-    return `${leg.estimatedMinutes} 分`;
+  if (leg.bestEstimate) {
+    return `${leg.bestEstimate.estimatedMinutes} 分`;
   }
 
   if (leg.status === "pending") {
@@ -41,6 +43,18 @@ function getLegStatusLabel(leg: ReturnType<typeof createRoutePreviewModel>["legs
   }
 
   return "待補連結";
+}
+
+function getTrafficBurdenLabel(minutes: number) {
+  if (minutes >= 90) {
+    return "偏重";
+  }
+
+  if (minutes >= 45) {
+    return "中等";
+  }
+
+  return "輕鬆";
 }
 
 function InvalidPlaceHelp() {
@@ -124,6 +138,21 @@ export function RoutePreview({
                 {model.linkedStopCount}/{model.stops.length}
               </span>
               Maps
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 border-2 border-[#183833] bg-[#fffdf7] text-center text-xs font-black">
+            <div className="border-r-2 border-[#183833] px-2 py-3">
+              <span className="block text-lg">{model.totalTravelMinutes || "--"}</span>
+              交通分鐘
+            </div>
+            <div className="border-r-2 border-[#183833] px-2 py-3">
+              <span className="block text-lg">{getTrafficBurdenLabel(model.totalTravelMinutes)}</span>
+              交通負擔
+            </div>
+            <div className="px-2 py-3">
+              <span className="block text-lg">{model.tightLegCount}</span>
+              太趕路段
             </div>
           </div>
 
@@ -238,9 +267,33 @@ export function RoutePreview({
                     {leg.status === "invalid_place" ? <InvalidPlaceHelp /> : null}
                   </span>
                 </div>
-                {leg.estimatedMinutes ? (
-                  <p className="text-xs font-black text-[#7c4b32]">
-                    {formatDistanceMeters(leg.distanceMeters)}
+                {leg.estimates.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-2">
+                    {leg.estimates.map((estimate) => (
+                      <div
+                        key={`${leg.id}-${estimate.method}`}
+                        className={`border px-2 py-1 text-xs font-black ${
+                          leg.bestEstimate?.method === estimate.method
+                            ? "border-[#1a5b4f] bg-[#e9efe7] text-[#1a5b4f]"
+                            : "border-[#d8cbb6] bg-white text-[#53635f]"
+                        }`}
+                      >
+                        <span className="mr-1 inline-grid size-5 place-items-center border border-current text-[10px]">
+                          {getRouteTravelMethodIcon(estimate.method)}
+                        </span>
+                        {getRouteTravelMethodLabel(estimate.method)} {estimate.estimatedMinutes} 分
+                        {typeof estimate.distanceMeters === "number" ? (
+                          <span className="mt-1 block text-[11px] text-[#7c4b32]">
+                            {formatDistanceMeters(estimate.distanceMeters)}
+                          </span>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+                {leg.isTight ? (
+                  <p className="border-2 border-[#d9b75f] bg-[#fff7d8] px-2 py-1 text-xs font-black text-[#6f4e00]">
+                    這段移動太趕，建議至少多留 10 分鐘緩衝。
                   </p>
                 ) : null}
               </div>

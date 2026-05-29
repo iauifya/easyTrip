@@ -6,11 +6,13 @@ import {
   getWaypointQuery,
   hasExactRouteLocation,
   parseGoogleDurationSeconds,
+  routeTravelMethods,
   secondsToRoundedMinutes,
   type RouteEstimateStop,
   type RouteEstimatesResponse,
   type RouteTravelEstimate,
 } from "@/lib/routes/travel-estimates";
+import type { TravelMethod } from "@/types/trip";
 
 type RoutesApiResponse = {
   routes?: Array<{
@@ -34,6 +36,12 @@ type EstimateRequestBody = {
   stops?: RouteEstimateStop[];
 };
 
+const googleTravelModeByMethod: Record<Exclude<TravelMethod, "taxi">, "WALK" | "TRANSIT" | "DRIVE"> = {
+  walk: "WALK",
+  transit: "TRANSIT",
+  drive: "DRIVE",
+};
+
 type LocationBias = {
   lat?: number;
   lng?: number;
@@ -50,7 +58,7 @@ function hasUsableStop(stop: RouteEstimateStop) {
 }
 
 function getLocationBias(value: LocationBias): LocationBias | undefined {
-  if (typeof value.lat === "number" && typeof value.lng === "number") {
+  if (typeof value.lat === "number" && typeof value.lng === "number" && !(value.lat === 0 && value.lng === 0)) {
     return {
       lat: value.lat,
       lng: value.lng,
@@ -213,11 +221,42 @@ async function searchPlaceForRoute(
   };
 }
 
+function getDepartureTimeForMethod(stop: RouteEstimateStop, method: TravelMethod) {
+  if (!stop.departureTime) {
+    return undefined;
+  }
+
+  const departure = new Date(stop.departureTime);
+
+  if (!Number.isFinite(departure.getTime())) {
+    return undefined;
+  }
+
+  const now = Date.now();
+
+  if (method === "transit") {
+    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+    const hundredDaysLater = now + 100 * 24 * 60 * 60 * 1000;
+
+    if (departure.getTime() < sevenDaysAgo || departure.getTime() > hundredDaysLater) {
+      return undefined;
+    }
+  }
+
+  if (method === "drive" && departure.getTime() < now) {
+    return undefined;
+  }
+
+  return stop.departureTime;
+}
+
 async function estimateLeg(
   from: RouteEstimateStop,
   to: RouteEstimateStop,
   apiKey: string,
+  method: Exclude<TravelMethod, "taxi">,
 ): Promise<RouteTravelEstimate | undefined> {
+  const departureTime = getDepartureTimeForMethod(from, method);
   const response = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
     method: "POST",
     headers: {
@@ -228,7 +267,14 @@ async function estimateLeg(
     body: JSON.stringify({
       origin: createRoutesApiWaypoint(from),
       destination: createRoutesApiWaypoint(to),
-      travelMode: "WALK",
+      travelMode: googleTravelModeByMethod[method],
+      ...(departureTime ? { departureTime } : {}),
+      ...(method === "drive"
+        ? {
+            routingPreference: "TRAFFIC_AWARE_OPTIMAL",
+            trafficModel: "BEST_GUESS",
+          }
+        : {}),
       languageCode: "zh-TW",
       units: "METRIC",
     }),
@@ -251,7 +297,7 @@ async function estimateLeg(
     id: `${from.id}-${to.id}`,
     fromItemId: from.id,
     toItemId: to.id,
-    method: "walk",
+    method,
     estimatedMinutes: secondsToRoundedMinutes(seconds),
     distanceMeters: route.distanceMeters,
     source: "google_routes",
@@ -311,31 +357,34 @@ export async function POST(request: Request) {
 
       if (!hasRouteResolvableLocation(stop) || !hasRouteResolvableLocation(nextStop)) {
         return {
-          estimate: undefined,
+          estimates: [],
           unavailableLeg: createUnavailableLeg(stop, nextStop, "invalid_place"),
         };
       }
 
-      const estimate = await estimateLeg(stop, nextStop, apiKey);
+      const estimates = (
+        await Promise.all(
+          routeTravelMethods.map((method) => estimateLeg(stop, nextStop, apiKey, method)),
+        )
+      ).filter((estimate): estimate is RouteTravelEstimate => Boolean(estimate));
 
       return {
-        estimate,
-        unavailableLeg: estimate ? undefined : createUnavailableLeg(stop, nextStop, "route_unavailable"),
+        estimates,
+        unavailableLeg: estimates.length > 0 ? undefined : createUnavailableLeg(stop, nextStop, "route_unavailable"),
       };
     }),
   );
-  const estimates = legResults
-    .map((result) => result.estimate)
-    .filter((estimate): estimate is RouteTravelEstimate => Boolean(estimate));
+  const estimates = legResults.flatMap((result) => result.estimates);
   const unavailableLegs = legResults.flatMap((result) => (result.unavailableLeg ? [result.unavailableLeg] : []));
   const hasInvalidPlace = unavailableLegs.some((leg) => leg.reason === "invalid_place");
+  const estimatedLegIds = new Set(estimates.map((estimate) => estimate.id));
 
   return NextResponse.json({
     estimates,
     unavailableLegs,
-    status: estimates.length === resolvedStops.length - 1 ? "ok" : hasInvalidPlace ? "invalid_place" : "partial",
+    status: estimatedLegIds.size === resolvedStops.length - 1 ? "ok" : hasInvalidPlace ? "invalid_place" : "partial",
     message:
-      estimates.length === resolvedStops.length - 1
+      estimatedLegIds.size === resolvedStops.length - 1
         ? undefined
         : hasInvalidPlace
           ? "地址有誤，無法估算。請改用正確的 Google Maps 連結。"

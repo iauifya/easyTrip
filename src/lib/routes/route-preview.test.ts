@@ -170,6 +170,90 @@ describe("route preview helpers", () => {
     });
   });
 
+  it("selects the fastest travel method and flags tight gaps", () => {
+    const items = [
+      item({
+        id: "a",
+        title: "Hotel",
+        endTime: "10:00",
+        place: {
+          id: "place-a",
+          name: "Hotel",
+          category: "hotel",
+          address: "Taipei",
+        },
+      }),
+      item({
+        id: "b",
+        title: "Cafe",
+        startTime: "10:18",
+        place: {
+          id: "place-b",
+          name: "Cafe",
+          category: "food",
+          address: "Taipei",
+        },
+      }),
+    ];
+
+    const model = createRoutePreviewModel(items, [
+      {
+        id: "a-b",
+        fromItemId: "a",
+        toItemId: "b",
+        method: "walk",
+        estimatedMinutes: 22,
+        source: "google_routes",
+      },
+      {
+        id: "a-b",
+        fromItemId: "a",
+        toItemId: "b",
+        method: "drive",
+        estimatedMinutes: 9,
+        source: "google_routes",
+      },
+    ]);
+
+    expect(model.legs[0]).toMatchObject({
+      estimatedMinutes: 9,
+      isTight: true,
+    });
+    expect(model.legs[0].bestEstimate?.method).toBe("drive");
+    expect(model.totalTravelMinutes).toBe(9);
+    expect(model.tightLegCount).toBe(1);
+  });
+
+  it("treats complete addresses as routable pending stops", () => {
+    const model = createRoutePreviewModel([
+      item({
+        id: "a",
+        title: "Taipei 101",
+        place: {
+          id: "place-a",
+          name: "Taipei 101",
+          category: "attraction",
+          address: "台北市信義區信義路五段7號",
+        },
+      }),
+      item({
+        id: "b",
+        title: "Elephant Mountain",
+        place: {
+          id: "place-b",
+          name: "Elephant Mountain",
+          category: "attraction",
+          address: "台北市信義區信義路五段150巷",
+        },
+      }),
+    ]);
+
+    expect(model.linkedStopCount).toBe(2);
+    expect(model.legs[0]).toMatchObject({
+      status: "pending",
+    });
+  });
+
   it("marks unavailable legs as invalid place errors", () => {
     const items = [
       item({ id: "a", title: "Hotel" }),

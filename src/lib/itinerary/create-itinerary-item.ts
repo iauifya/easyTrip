@@ -14,6 +14,23 @@ const googleMapsUrlSchema = z
   .optional()
   .refine((value) => !value || isGoogleMapsUrl(value), "請貼上有效的 Google Maps 連結");
 
+const optionalCoordinateSchema = z.preprocess(
+  (value) => (value === "" || value === null ? undefined : value),
+  z.coerce.number().optional(),
+);
+
+function hasUsableCoordinates(lat: number | undefined, lng: number | undefined) {
+  return typeof lat === "number" && typeof lng === "number" && !(lat === 0 && lng === 0);
+}
+
+function getStayMinutes(startTime: string, endTime: string) {
+  const startMinutes = timeToMinutes(startTime);
+  const endMinutes = timeToMinutes(endTime);
+  const rawMinutes = endMinutes - startMinutes;
+
+  return rawMinutes > 0 ? rawMinutes : rawMinutes + 24 * 60;
+}
+
 export const itineraryItemSchema = z
   .object({
     title: z.string().trim().min(1, "請填寫名稱").min(2, "名稱至少需要 2 個字"),
@@ -25,15 +42,15 @@ export const itineraryItemSchema = z
     address: z.string().trim().optional(),
     googlePlaceId: z.string().trim().optional(),
     googleMapsUrl: googleMapsUrlSchema,
-    lat: z.coerce.number().optional(),
-    lng: z.coerce.number().optional(),
+    lat: optionalCoordinateSchema,
+    lng: optionalCoordinateSchema,
     note: z.string().trim().optional(),
   })
   .refine((value) => Boolean(value.address?.trim() || value.googleMapsUrl?.trim()), {
     message: "請填寫完整地址或 Google Maps 連結",
     path: ["address"],
   })
-  .refine((value) => timeToMinutes(value.startTime) < timeToMinutes(value.endTime), {
+  .refine((value) => timeToMinutes(value.startTime) !== timeToMinutes(value.endTime), {
     message: "結束時間必須晚於開始時間",
     path: ["endTime"],
   });
@@ -66,7 +83,7 @@ function createPlaceFromInput(
   const parsedGoogleMapsUrl = input.googleMapsUrl ? parseGoogleMapsUrl(input.googleMapsUrl) : undefined;
   const hasResolvedPlaceDetails = Boolean(
     input.googlePlaceId ||
-      (typeof input.lat === "number" && typeof input.lng === "number") ||
+      hasUsableCoordinates(input.lat, input.lng) ||
       input.address?.trim(),
   );
   const shouldUseSearchUrlFallback =
@@ -81,8 +98,16 @@ function createPlaceFromInput(
     name: input.title,
     category: input.type,
     address: input.address || undefined,
-    lat: hasGoogleMapsUrl || hasManualAddress ? input.lat : input.lat ?? existingPlace?.lat,
-    lng: hasGoogleMapsUrl || hasManualAddress ? input.lng : input.lng ?? existingPlace?.lng,
+    lat: hasUsableCoordinates(input.lat, input.lng)
+      ? input.lat
+      : hasGoogleMapsUrl || hasManualAddress
+        ? undefined
+        : existingPlace?.lat,
+    lng: hasUsableCoordinates(input.lat, input.lng)
+      ? input.lng
+      : hasGoogleMapsUrl || hasManualAddress
+        ? undefined
+        : existingPlace?.lng,
     googlePlaceId:
       input.googlePlaceId ||
       mapsPreview?.googlePlaceId ||
@@ -90,7 +115,7 @@ function createPlaceFromInput(
     googleMapsUrl: fallbackGoogleMapsUrl,
     mapPreviewUrl: mapsPreview?.mapPreviewUrl,
     source: mapsPreview?.source ?? existingPlace?.source ?? "manual",
-    averageStayMinutes: timeToMinutes(input.endTime) - timeToMinutes(input.startTime),
+    averageStayMinutes: getStayMinutes(input.startTime, input.endTime),
   };
 }
 
@@ -99,7 +124,7 @@ export function createItineraryItemFromInput(
   existingItem?: ItineraryItem,
 ): ItineraryItem {
   const parsedInput = itineraryItemSchema.parse(input);
-  const stayMinutes = timeToMinutes(parsedInput.endTime) - timeToMinutes(parsedInput.startTime);
+  const stayMinutes = getStayMinutes(parsedInput.startTime, parsedInput.endTime);
   const id = existingItem?.id ?? createId("item");
   const placeId = existingItem?.placeId ?? `place-${id}`;
 

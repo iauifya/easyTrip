@@ -44,6 +44,26 @@ describe("create itinerary item helpers", () => {
     });
   });
 
+  it("does not turn empty coordinate fields into 0,0", () => {
+    const item = createItineraryItemFromInput({
+      title: "在家行旅",
+      type: "hotel",
+      startTime: "22:00",
+      endTime: "23:30",
+      address: "104臺北市中山區中山里中山北路二段65巷2弄3號",
+      googleMapsUrl: "",
+      lat: "",
+      lng: "",
+      note: "",
+    } as never);
+
+    expect(item.place?.lat).toBeUndefined();
+    expect(item.place?.lng).toBeUndefined();
+    expect(item.place?.googleMapsUrl).toBe(
+      "https://www.google.com/maps/search/?api=1&query=%E5%9C%A8%E5%AE%B6%E8%A1%8C%E6%97%85+104%E8%87%BA%E5%8C%97%E5%B8%82%E4%B8%AD%E5%B1%B1%E5%8D%80%E4%B8%AD%E5%B1%B1%E9%87%8C%E4%B8%AD%E5%B1%B1%E5%8C%97%E8%B7%AF%E4%BA%8C%E6%AE%B565%E5%B7%B72%E5%BC%843%E8%99%9F",
+    );
+  });
+
   it("rejects missing address and Google Maps URL", () => {
     const result = itineraryItemSchema.safeParse({
       title: "Taipei 101",
@@ -58,18 +78,19 @@ describe("create itinerary item helpers", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects an end time before the start time", () => {
-    const result = itineraryItemSchema.safeParse({
+  it("calculates overnight stay minutes when the end time is after midnight", () => {
+    const item = createItineraryItemFromInput({
       title: "午餐",
       type: "food",
-      startTime: "12:30",
-      endTime: "12:00",
+      startTime: "23:30",
+      endTime: "01:00",
       address: "",
       googleMapsUrl: "https://www.google.com/maps/search/?api=1&query=%E5%8D%88%E9%A4%90",
       note: "",
     });
 
-    expect(result.success).toBe(false);
+    expect(item.stayMinutes).toBe(90);
+    expect(item.place?.averageStayMinutes).toBe(90);
   });
 
   it("rejects invalid Google Maps URLs", () => {
