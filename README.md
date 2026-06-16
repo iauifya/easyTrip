@@ -2,9 +2,11 @@
 
 EasyTrip is a local-first travel planner for short city trips. It helps travelers create trips, organize day-by-day stops, preview route movement, and switch into a focused Today Mode while traveling.
 
+繁體中文版本：[README.zh-TW.md](README.zh-TW.md)
+
 ## Current Status
 
-Phase 2 is implemented locally:
+Phase 3 is implemented locally:
 
 - Taiwanese-inspired visual language for the single-day itinerary page
 - Mobile bottom sheet editing for itinerary stops
@@ -12,6 +14,7 @@ Phase 2 is implemented locally:
 - Google Maps URL preview and short-link resolution
 - `RoutePreview` component with route status, Google Maps directions link, and Routes API estimates
 - Routes API walking time and distance estimates between adjacent stops
+- AI prompt-assisted itinerary import through copy/paste JSON
 - Upgraded Today Mode with next-stop focus, progress, reminders, and movement time
 - RWD hardening and test pass
 
@@ -29,10 +32,12 @@ Existing demo:
 - Google Maps place preview in the editor
 - Route preview for daily movement
 - Routes API travel time and distance estimates
+- AI prompt generation for ChatGPT, Claude, and Gemini
+- AI JSON paste-back flow with validation, preview, skipped-row feedback, and batch import
 - Today Mode for current-day travel focus
 - Local persistence through `localStorage`
 - Responsive layouts for mobile, tablet, and desktop
-- Unit tests for trip creation, itinerary timing, storage, route helpers, and Google Maps helpers
+- Unit tests for trip creation, itinerary timing, storage, route helpers, Google Maps helpers, and AI import parsing
 
 ## Tech Stack
 
@@ -47,6 +52,48 @@ Existing demo:
 - Google Maps Platform: Places API and Routes API
 
 The app is still local-first. Trip data is stored in `localStorage`; the API routes are used only for Google Maps URL resolution and route estimates.
+
+## AI Itinerary Import
+
+EasyTrip includes a copy/paste AI workflow on the single-day itinerary page.
+
+The flow is:
+
+1. Open `/trips/:tripId/day/:dayId`.
+2. Use the AI IMPORT panel to copy the generated prompt.
+3. Open ChatGPT, Claude, or Gemini from the panel.
+4. Ask the AI to plan or refine the day.
+5. Paste the AI's JSON result back into EasyTrip.
+6. Review valid rows and skipped rows.
+7. Import valid rows into the current day.
+
+The import appends valid rows and does not replace existing itinerary items. If the pasted schedule crosses midnight or clearly continues into the next morning, EasyTrip automatically expands the trip days and places those rows on the following day.
+
+Expected JSON shape:
+
+```json
+{
+  "version": 1,
+  "items": [
+    {
+      "title": "Taipei 101",
+      "address": "Taipei 101, Xinyi District, Taipei",
+      "startTime": "10:00",
+      "endTime": "11:30",
+      "type": "attraction",
+      "note": "Book tickets ahead."
+    }
+  ]
+}
+```
+
+Allowed `type` values:
+
+```text
+attraction, food, hotel, transport, shopping, rest
+```
+
+This feature does not call the OpenAI, Anthropic, or Gemini APIs directly. External AI tools are opened as normal websites, and EasyTrip only handles prompt generation, JSON parsing, validation, preview, and local import.
 
 ## Routes
 
@@ -121,7 +168,7 @@ npm run build
 
 Current local verification:
 
-- Vitest: 11 files, 53 tests passing
+- Vitest: 12 files, 77 tests passing
 - ESLint: passing
 - Next production build: passing
 - Route smoke checks: `/`, `/trips`, `/trips/new`, day page, and Today Mode return HTTP 200 locally
@@ -164,9 +211,11 @@ Use this sequence when presenting:
 2. Open `/trips` to show saved trips and entry points.
 3. Open `/trips/new` to create a new trip.
 4. Open `/trips/trip-taipei-weekend/day/day-1` to edit a sample day.
-5. Paste a Google Maps URL into a stop and save it.
-6. Review RoutePreview movement estimates.
-7. Open `/trips/:tripId/today` when the trip has a day matching the current date.
+5. Use the AI IMPORT panel to copy the planning prompt.
+6. Paste an AI JSON result back into EasyTrip and import valid rows.
+7. Paste a Google Maps URL into a stop and save it.
+8. Review RoutePreview movement estimates.
+9. Open `/trips/:tripId/today` when the trip has a day matching the current date.
 
 ## Project Structure
 
@@ -194,5 +243,6 @@ src/
 - Add cloud sync and authenticated trips
 - Add shareable itinerary links
 - Add drag-and-drop itinerary ordering
+- Add optional direct AI provider integration after the copy/paste workflow is validated
 - Add route estimate caching to reduce Google Maps Platform usage
 - Add Playwright E2E once browser automation is available in CI
