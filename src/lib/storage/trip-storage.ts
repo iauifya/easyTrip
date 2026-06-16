@@ -1,9 +1,12 @@
-import { sampleTrips } from "@/data/sample-trip";
+import { nagoyaTrip, sampleTrips } from "@/data/sample-trip";
 import type { ItineraryItem, Trip, TripDay } from "@/types/trip";
 
 const TRIPS_STORAGE_KEY = "easytrip.trips.v1";
+const LEGACY_YILAN_TRIP_IDS = new Set(["trip-yilan-relaxed"]);
+const LEGACY_YILAN_TRIP_TITLES = new Set(["宜蘭輕鬆遊"]);
 const LEGACY_SAMPLE_ITEM_IDS = new Set([
   "item-hotel",
+  "item-station",
   "item-cafe",
   "item-museum",
   "item-night-market",
@@ -83,6 +86,10 @@ function shouldRefreshSampleTemplate(trip: Trip) {
   );
 }
 
+function isLegacyYilanTemplate(trip: Trip) {
+  return LEGACY_YILAN_TRIP_IDS.has(trip.id) || LEGACY_YILAN_TRIP_TITLES.has(trip.title);
+}
+
 function normalizeTrips(value: unknown): Trip[] {
   if (!Array.isArray(value)) {
     return sampleTrips;
@@ -92,6 +99,10 @@ function normalizeTrips(value: unknown): Trip[] {
     .filter(isTrip)
     .map(normalizeTrip)
     .map((trip) => {
+      if (isLegacyYilanTemplate(trip)) {
+        return nagoyaTrip;
+      }
+
       const matchingSample = sampleTrips.find((sampleTrip) => sampleTrip.id === trip.id);
 
       if (matchingSample && !hasExactRouteTemplate(trip) && shouldRefreshSampleTemplate(trip)) {
@@ -99,7 +110,11 @@ function normalizeTrips(value: unknown): Trip[] {
       }
 
       return trip;
-    });
+    })
+    .filter(
+      (trip, index, allTrips) =>
+        trip.id !== nagoyaTrip.id || allTrips.findIndex((item) => item.id === nagoyaTrip.id) === index,
+    );
 
   return trips.length > 0 ? trips : sampleTrips;
 }

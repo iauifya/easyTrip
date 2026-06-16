@@ -1,14 +1,70 @@
 import Link from "next/link";
-import { sampleTrip } from "@/data/sample-trip";
 import { getDayWarnings, getNextStopInsight } from "@/lib/itinerary/day-insights";
 import { categoryLabels, paceLabels } from "@/lib/trips/labels";
 import { getSortedItems } from "@/lib/time/itinerary";
 import { taiwanWindowPattern } from "@/lib/ui/taiwan-style";
+import type { ItineraryItem, TripPace } from "@/types/trip";
 
-const day = sampleTrip.days[0];
+const prototypeTrip: {
+  title: string;
+  destination: string;
+  pace: TripPace;
+} = {
+  title: "台北週末小旅行",
+  destination: "台北",
+  pace: "relaxed",
+};
+
+const prototypeItems: ItineraryItem[] = [
+  {
+    id: "prototype-station",
+    placeId: "prototype-place-station",
+    type: "transport",
+    title: "台北車站寄放行李",
+    startTime: "10:00",
+    endTime: "10:30",
+    stayMinutes: 30,
+    note: "先寄放行李，輕裝開始中山到寧夏的步行路線。",
+  },
+  {
+    id: "prototype-cafe",
+    placeId: "prototype-place-cafe",
+    type: "food",
+    title: "Fika Fika Cafe",
+    startTime: "11:25",
+    endTime: "12:30",
+    stayMinutes: 65,
+    note: "保留一點排隊時間，坐下來喝咖啡再出發。",
+  },
+  {
+    id: "prototype-museum",
+    placeId: "prototype-place-museum",
+    type: "attraction",
+    title: "台北當代藝術館",
+    startTime: "13:10",
+    endTime: "15:00",
+    stayMinutes: 110,
+    note: "展覽與館舍本身都適合慢慢看。",
+  },
+  {
+    id: "prototype-night-market",
+    placeId: "prototype-place-night-market",
+    type: "food",
+    title: "寧夏夜市",
+    startTime: "18:00",
+    endTime: "19:30",
+    stayMinutes: 90,
+    note: "晚餐以小吃為主，可以從圓環附近一路慢慢逛。",
+  },
+];
+
+const day = {
+  date: "2026-06-13",
+  items: prototypeItems,
+};
 const items = getSortedItems(day.items);
 const nextStop = getNextStopInsight(items, "12:05");
-const warnings = getDayWarnings(items, sampleTrip.pace);
+const warnings = getDayWarnings(items, prototypeTrip.pace);
 
 const placeNotes = [
   "捷運中山站 2 號出口",
@@ -65,7 +121,7 @@ export default function PrototypePage() {
                 <div className="mt-7 grid gap-3 sm:grid-cols-3">
                   {[
                     ["現在", "12:05"],
-                    ["節奏", paceLabels[sampleTrip.pace]],
+                    ["節奏", paceLabels[prototypeTrip.pace]],
                     ["提醒", `${warnings.length} 則`],
                   ].map(([label, value]) => (
                     <div key={label} className="border-l-4 border-[#d9b75f] bg-[#f1eadb] px-4 py-3">
@@ -80,7 +136,7 @@ export default function PrototypePage() {
                 <p className="text-sm font-black tracking-[0.18em] text-[#f2d179]">今天的旅行票</p>
                 <div className="mt-5 border-y-2 border-dashed border-white/45 py-5">
                   <p className="text-5xl font-black">06.13</p>
-                  <p className="mt-2 font-bold text-white/75">{sampleTrip.destination} / {items.length} 站</p>
+                  <p className="mt-2 font-bold text-white/75">{prototypeTrip.destination} / {items.length} 站</p>
                 </div>
                 <p className="mt-5 text-sm leading-7 text-white/70">
                   票券樣式可以用在今日模式、分享卡片或行程摘要，形成更鮮明的品牌記憶點。

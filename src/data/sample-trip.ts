@@ -101,6 +101,27 @@ export const sampleTrip: Trip = {
   ],
 };
 
+export const nagoyaTrip: Trip = {
+  id: "trip-nagoya-overnight",
+  title: "名古屋兩天一夜",
+  destination: "名古屋",
+  startDate: "2026-06-16",
+  endDate: "2026-06-17",
+  pace: "normal",
+  days: [
+    {
+      id: "day-nagoya-1",
+      date: "2026-06-16",
+      items: [],
+    },
+    {
+      id: "day-nagoya-2",
+      date: "2026-06-17",
+      items: [],
+    },
+  ],
+};
+
 export const sampleTrips: Trip[] = [
   sampleTrip,
   {
@@ -181,4 +202,5 @@ export const sampleTrips: Trip[] = [
       },
     ],
   },
+  nagoyaTrip,
 ];

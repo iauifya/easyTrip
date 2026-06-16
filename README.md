@@ -210,7 +210,7 @@ Use this sequence when presenting:
 1. Open `/` to show the selected trip dashboard and next-stop summary.
 2. Open `/trips` to show saved trips and entry points.
 3. Open `/trips/new` to create a new trip.
-4. Open `/trips/trip-taipei-weekend/day/day-1` to edit a sample day.
+4. Open `/trips/trip-nagoya-overnight/day/day-1` to edit a sample day.
 5. Use the AI IMPORT panel to copy the planning prompt.
 6. Paste an AI JSON result back into EasyTrip and import valid rows.
 7. Paste a Google Maps URL into a stop and save it.

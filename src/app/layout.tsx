@@ -3,13 +3,13 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "EasyTrip | Calm Travel Planner",
+  title: "EasyTrip｜輕鬆旅行規劃",
   description:
-    "A responsive travel-planning MVP for creating trips, organizing daily stops, and keeping the next travel action clear.",
+    "建立旅程、安排每日停留點、檢查太趕的行程，旅行當天也能快速掌握下一步。",
   openGraph: {
-    title: "EasyTrip | Calm Travel Planner",
+    title: "EasyTrip｜輕鬆旅行規劃",
     description:
-      "Create trips, organize itinerary stops, catch tight schedules, and switch into today mode while traveling.",
+      "建立旅程、安排每日停留點、檢查太趕的行程，旅行當天也能快速掌握下一步。",
     type: "website",
   },
 };

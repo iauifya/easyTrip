@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { sampleTrips } from "@/data/sample-trip";
+import { nagoyaTrip, sampleTrips } from "@/data/sample-trip";
 import { clearTrips, loadTrips, saveTrips } from "./trip-storage";
 
 const storageKey = "easytrip.trips.v1";
@@ -116,6 +116,30 @@ describe("trip storage adapter", () => {
     });
 
     expect(loadTrips()[0]).toEqual(sampleTrips[0]);
+  });
+
+  it("replaces legacy default trip templates with the current blank sample trip", () => {
+    installStorage({
+      [storageKey]: JSON.stringify([
+        {
+          id: "trip-yilan-relaxed",
+          title: "宜蘭輕鬆遊",
+          destination: "宜蘭",
+          startDate: "2026-06-16",
+          endDate: "2026-06-17",
+          pace: "relaxed",
+          days: [
+            {
+              id: "day-yilan-1",
+              date: "2026-06-16",
+              items: [],
+            },
+          ],
+        },
+      ]),
+    });
+
+    expect(loadTrips()).toEqual([nagoyaTrip]);
   });
 
   it("falls back to sample trips when persisted data is malformed", () => {

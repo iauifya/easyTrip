@@ -208,7 +208,7 @@ vercel deploy --prod
 1. 開啟 `/`，展示目前選取旅程 dashboard 與下一站摘要。
 2. 開啟 `/trips`，展示已儲存旅程與入口。
 3. 開啟 `/trips/new`，建立一趟新旅程。
-4. 開啟 `/trips/trip-taipei-weekend/day/day-1`，編輯範例單日行程。
+4. 開啟 `/trips/trip-nagoya-overnight/day/day-1`，編輯範例單日行程。
 5. 使用 AI IMPORT 面板複製規劃 prompt。
 6. 將 AI JSON 結果貼回 EasyTrip 並匯入有效資料。
 7. 將 Google Maps URL 貼到行程點並儲存。
