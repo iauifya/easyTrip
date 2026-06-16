@@ -1,4 +1,4 @@
-export type TripPace = "relaxed" | "normal" | "packed";
+export type TripPace = "relaxed" | "normal" | "packed" | "unlimited";
 
 export type ItineraryItemType =
   | "attraction"
@@ -30,6 +30,8 @@ export type ItineraryItem = {
   id: string;
   placeId: string;
   place?: Place;
+  source?: "manual" | "ai_import";
+  importBatchId?: string;
   type: ItineraryItemType;
   title: string;
   startTime: string;

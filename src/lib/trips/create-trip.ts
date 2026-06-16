@@ -9,7 +9,7 @@ export const createTripSchema = z
     destination: z.string().trim().min(2, "目的地至少需要 2 個字"),
     startDate: z.string().min(1, "請選擇開始日期"),
     endDate: z.string().min(1, "請選擇結束日期"),
-    pace: z.enum(["relaxed", "normal", "packed"]),
+    pace: z.enum(["relaxed", "normal", "packed", "unlimited"]),
   })
   .refine((value) => new Date(value.startDate) <= new Date(value.endDate), {
     message: "結束日期不能早於開始日期",

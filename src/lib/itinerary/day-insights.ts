@@ -27,12 +27,14 @@ const maxStopsByPace: Record<TripPace, number> = {
   relaxed: 4,
   normal: 5,
   packed: 7,
+  unlimited: Number.POSITIVE_INFINITY,
 };
 
 const maxStayMinutesByPace: Record<TripPace, number> = {
   relaxed: 360,
   normal: 480,
   packed: 600,
+  unlimited: Number.POSITIVE_INFINITY,
 };
 
 function getMinutesLabel(minutes: number) {

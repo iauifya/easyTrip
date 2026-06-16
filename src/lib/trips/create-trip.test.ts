@@ -34,4 +34,16 @@ describe("create trip helpers", () => {
     expect(trip.days).toHaveLength(2);
     expect(trip.days[0].items).toEqual([]);
   });
+
+  it("accepts the unlimited pace", () => {
+    const result = createTripSchema.safeParse({
+      title: "台北緊湊行",
+      destination: "台北",
+      startDate: "2026-07-04",
+      endDate: "2026-07-04",
+      pace: "unlimited",
+    });
+
+    expect(result.success).toBe(true);
+  });
 });

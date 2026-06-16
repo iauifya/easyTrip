@@ -13,4 +13,5 @@ export const paceLabels: Record<TripPace, string> = {
   relaxed: "輕鬆節奏",
   normal: "普通節奏",
   packed: "充實節奏",
+  unlimited: "不限制",
 };

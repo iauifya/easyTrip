@@ -167,9 +167,15 @@ export function RoutePreview({
               依 {model.projectedStopCount} 個座標繪製，北方在上、東方在右。
             </p>
           ) : (
-            <p className="border-2 border-[#d8cbb6] bg-[#fffdf7] px-3 py-2 text-xs font-black text-[#7c4b32]">
-              缺少足夠座標，目前以行程順序示意；貼上可解析的 Google Maps 地點後會校正方位。
-            </p>
+            <details className="group w-fit">
+              <summary className="inline-flex cursor-pointer list-none border-2 border-[#d8cbb6] bg-[#fffdf7] px-3 py-2 text-xs font-black text-[#7c4b32] shadow-[2px_2px_0_#d8cbb6] marker:hidden [&::-webkit-details-marker]:hidden">
+                <span className="group-open:hidden">路線圖提示</span>
+                <span className="hidden group-open:inline">收合提示</span>
+              </summary>
+              <p className="mt-2 border-2 border-[#d8cbb6] bg-[#fffdf7] px-3 py-2 text-xs font-black leading-5 text-[#7c4b32] shadow-[2px_2px_0_#d8cbb6]">
+                目前以行程順序示意；地址仍可開啟 Google Maps 搜尋。若想讓圖上方位更接近真實位置，請在行程點貼上 Google Maps 分享連結，或用名稱欄搜尋並確認預覽地圖。
+              </p>
+            </details>
           )}
         </div>
 

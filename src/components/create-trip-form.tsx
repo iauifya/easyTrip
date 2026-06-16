@@ -35,6 +35,11 @@ const paceOptions: Array<{
     label: paceLabels.packed,
     description: "行程比較滿，之後會更需要時間提醒。",
   },
+  {
+    value: "unlimited",
+    label: paceLabels.unlimited,
+    description: "不限制站數與停留總長，適合自行掌控緊湊行程。",
+  },
 ];
 
 function getToday() {

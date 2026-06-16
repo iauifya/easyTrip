@@ -44,6 +44,22 @@ describe("day insights", () => {
     expect(warnings.some((warning) => warning.id === "tight-gaps")).toBe(true);
   });
 
+  it("does not warn about too many stops for the unlimited pace", () => {
+    const manyStops = Array.from({ length: 9 }, (_, index) => ({
+      id: `stop-${index}`,
+      placeId: `stop-${index}`,
+      type: "attraction" as const,
+      title: `Stop ${index + 1}`,
+      startTime: `${String(8 + index).padStart(2, "0")}:00`,
+      endTime: `${String(8 + index).padStart(2, "0")}:30`,
+      stayMinutes: 30,
+    }));
+
+    const warnings = getDayWarnings(manyStops, "unlimited");
+
+    expect(warnings.some((warning) => warning.id === "too-many-stops")).toBe(false);
+  });
+
   it("calculates completed progress", () => {
     const progress = getDayProgress(items, "10:35");
 
