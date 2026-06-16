@@ -3,9 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
+import {
+  createAiItineraryPrompt,
+  getAiItineraryImportDayAssignments,
+  parseAiItineraryImport,
+} from "@/lib/itinerary/ai-import";
 import {
   createItineraryItemFromInput,
   itineraryItemSchema,
@@ -61,6 +66,7 @@ const paceOptions: Array<{
   { value: "relaxed", label: paceLabels.relaxed, helper: "最多 4 站，停留總長約 6 小時內" },
   { value: "normal", label: paceLabels.normal, helper: "最多 5 站，停留總長約 8 小時內" },
   { value: "packed", label: paceLabels.packed, helper: "最多 7 站，停留總長約 10 小時內" },
+  { value: "unlimited", label: paceLabels.unlimited, helper: "不限制站數與停留總長" },
 ];
 
 const fallbackValues: ItineraryItemInput = {
@@ -270,6 +276,25 @@ function PlaceSearchPreview({ preview }: { preview?: GoogleMapsPreview }) {
   );
 }
 
+type AiImportMode = "replace" | "append";
+
+function createAiImportBatchId() {
+  return `ai-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function getLatestAiImportBatchId(trip?: { days: Array<{ items: ItineraryItem[] }> }) {
+  const batchIds = new Set(trip?.days
+    .flatMap((tripDay) => tripDay.items)
+    .filter((item) => item.source === "ai_import" && item.importBatchId)
+    .map((item) => item.importBatchId as string) ?? []);
+
+  return Array.from(batchIds).sort().at(-1);
+}
+
+function isAiImportBatchItem(item: ItineraryItem, batchId?: string) {
+  return item.source === "ai_import" && Boolean(batchId) && item.importBatchId === batchId;
+}
+
 export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: string }) {
   const router = useRouter();
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
@@ -284,6 +309,11 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
   const [unavailableRouteLegs, setUnavailableRouteLegs] = useState<UnavailableRouteLeg[]>([]);
   const [routeEstimateMessage, setRouteEstimateMessage] = useState("");
   const [isEstimatingRoute, setIsEstimatingRoute] = useState(false);
+  const [aiImportText, setAiImportText] = useState("");
+  const [aiImportMessage, setAiImportMessage] = useState("");
+  const [aiPromptMessage, setAiPromptMessage] = useState("");
+  const [aiImportMode, setAiImportMode] = useState<AiImportMode>("replace");
+  const [selectedAiImportItemIds, setSelectedAiImportItemIds] = useState<Set<string>>(new Set());
   const trips = useTripStore((state) => state.trips);
   const hasHydrated = useTripStore((state) => state.hasHydrated);
   const hydrateTrips = useTripStore((state) => state.hydrateTrips);
@@ -377,6 +407,26 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
   const nextStop = getNextStopInsight(items, currentTime);
   const editingItem = items.find((item) => item.id === editingItemId);
   const todayDay = getTodayTripDay(trip);
+  const aiItineraryPrompt = trip && day ? createAiItineraryPrompt(trip, day) : "";
+  const aiImportPreview = useMemo(() => parseAiItineraryImport(aiImportText), [aiImportText]);
+  const latestAiImportBatchId = getLatestAiImportBatchId(trip);
+  const latestAiImportItemCount =
+    trip?.days.reduce(
+      (count, tripDay) =>
+        count + tripDay.items.filter((item) => isAiImportBatchItem(item, latestAiImportBatchId)).length,
+      0,
+    ) ?? 0;
+  const baseItemsForAiImport =
+    aiImportMode === "replace"
+      ? items.filter((item) => !isAiImportBatchItem(item, latestAiImportBatchId))
+      : items;
+  const aiImportAssignments = getAiItineraryImportDayAssignments(
+    aiImportPreview.items,
+    baseItemsForAiImport,
+  );
+  const selectedAiImportAssignments = aiImportAssignments.filter(({ item }) =>
+    selectedAiImportItemIds.has(item.id),
+  );
   const lastItemEndTime = items.at(-1)?.endTime ?? "08:00";
   const nextDefaultStartTime = items.length > 0 ? minutesToTime(timeToMinutes(lastItemEndTime) + 30) : "08:00";
   const openGapRecommendation = getOpenGapRecommendation(items, selectedType, editingItemId);
@@ -397,6 +447,10 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
   });
   const suggestedGooglePlaceName = !isMobileEditorOpen && googleMapsUrl ? getGoogleMapsPlaceName(googleMapsUrl) : undefined;
   const visibleGoogleMapsLookupMessage = !isMobileEditorOpen && googleMapsUrl?.trim() ? googleMapsLookupMessage : "";
+
+  useEffect(() => {
+    setSelectedAiImportItemIds(new Set(aiImportPreview.items.map((item) => item.id)));
+  }, [aiImportPreview.items]);
 
   function getDefaultTimesFromLastItem(type: ItineraryItemType = "attraction") {
     return {
@@ -741,6 +795,98 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
       setPendingCrossDayItem(null);
       setCrossDayDaysToAdd(1);
       cancelEdit();
+    }
+  }
+
+  async function copyAiItineraryPrompt() {
+    if (!aiItineraryPrompt) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(aiItineraryPrompt);
+      setAiPromptMessage("已複製規劃提示。");
+    } catch {
+      setAiPromptMessage("複製失敗，請手動選取規劃提示。");
+    }
+  }
+
+  function confirmAiItineraryImport() {
+    if (!trip || dayIndex < 0) {
+      return;
+    }
+
+    if (aiImportAssignments.length === 0) {
+      setAiImportMessage(aiImportPreview.error ?? "沒有可匯入的有效行程。");
+      return;
+    }
+
+    if (selectedAiImportAssignments.length === 0) {
+      setAiImportMessage("請至少勾選一個要匯入的行程點。");
+      return;
+    }
+
+    const maxDayOffset = Math.max(...selectedAiImportAssignments.map((assignment) => assignment.dayOffset));
+    const nextDayCount = Math.max(trip.days.length, dayIndex + maxDayOffset + 1);
+
+    if (nextDayCount > 14) {
+      setAiImportMessage("這次匯入需要超過 14 天，請縮短 AI 結果後再試一次。");
+      return;
+    }
+
+    try {
+      const scheduledTrip =
+        nextDayCount > trip.days.length
+          ? adjustTripSchedule(trip, trip.startDate, nextDayCount)
+          : trip;
+      const itemsByDayId = new Map<string, ItineraryItem[]>();
+      const importBatchId = createAiImportBatchId();
+
+      for (const assignment of selectedAiImportAssignments) {
+        const targetDay = scheduledTrip.days[dayIndex + assignment.dayOffset];
+
+        if (!targetDay) {
+          continue;
+        }
+
+        itemsByDayId.set(targetDay.id, [
+          ...(itemsByDayId.get(targetDay.id) ?? []),
+          {
+            ...assignment.item,
+            source: "ai_import",
+            importBatchId,
+          },
+        ]);
+      }
+
+      const removedItemCount = aiImportMode === "replace" ? latestAiImportItemCount : 0;
+
+      updateTrip({
+        ...scheduledTrip,
+        days: scheduledTrip.days.map((tripDay) => {
+          const importedItems = itemsByDayId.get(tripDay.id);
+          const retainedItems =
+            aiImportMode === "replace"
+              ? tripDay.items.filter((item) => !isAiImportBatchItem(item, latestAiImportBatchId))
+              : tripDay.items;
+
+          return importedItems || retainedItems.length !== tripDay.items.length
+            ? { ...tripDay, items: [...retainedItems, ...(importedItems ?? [])] }
+            : tripDay;
+        }),
+      });
+
+      const affectedDayCount = itemsByDayId.size;
+
+      setAiImportMessage(
+        aiImportMode === "replace"
+          ? `已移除上次 AI 匯入 ${removedItemCount} 筆，匯入這次勾選的 ${selectedAiImportAssignments.length} 筆，分布於 ${affectedDayCount} 天。`
+          : `已追加 ${selectedAiImportAssignments.length} 個行程點，分布於 ${affectedDayCount} 天。`,
+      );
+      setAiImportText("");
+      setSelectedAiImportItemIds(new Set());
+    } catch (error) {
+      setAiImportMessage(error instanceof Error ? error.message : "匯入失敗，請再試一次。");
     }
   }
 
@@ -1137,6 +1283,227 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
               </div>
             </div>
 
+            <section className="mt-5 border-2 border-[#183833] bg-[#fffdf7] p-5 shadow-[8px_8px_0_#d9b75f] sm:p-6">
+              <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
+                <div>
+                  <p className="text-sm font-black tracking-[0.18em] text-[#b43c2f]">
+                    行程匯入
+                  </p>
+                  <h3 className="mt-2 text-2xl font-black">跟機器人一起規劃!</h3>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={copyAiItineraryPrompt}
+                      className="min-h-10 border-2 border-[#183833] bg-[#d9b75f] px-3 py-2 text-sm font-black text-[#183833] shadow-[3px_3px_0_#183833] transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#183833]"
+                    >
+                      複製規劃提示
+                    </button>
+                    <a
+                      href="https://chatgpt.com/"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex min-h-10 items-center border-2 border-[#d8cbb6] bg-white px-3 py-2 text-sm font-black text-[#183833] transition hover:border-[#183833]"
+                    >
+                      ChatGPT
+                    </a>
+                    <a
+                      href="https://claude.ai/"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex min-h-10 items-center border-2 border-[#d8cbb6] bg-white px-3 py-2 text-sm font-black text-[#183833] transition hover:border-[#183833]"
+                    >
+                      Claude
+                    </a>
+                    <a
+                      href="https://gemini.google.com/"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex min-h-10 items-center border-2 border-[#d8cbb6] bg-white px-3 py-2 text-sm font-black text-[#183833] transition hover:border-[#183833]"
+                    >
+                      Gemini
+                    </a>
+                  </div>
+                  {aiPromptMessage ? (
+                    <p className="mt-2 text-sm font-black text-[#1a5b4f]">{aiPromptMessage}</p>
+                  ) : null}
+                  <details className="mt-4 border-2 border-[#d8cbb6] bg-[#fbf8f0]">
+                    <summary className="cursor-pointer px-3 py-2 text-sm font-black text-[#7c4b32]">
+                      規劃提示預覽
+                    </summary>
+                    <textarea
+                      readOnly
+                      value={aiItineraryPrompt}
+                      rows={10}
+                      className="block w-full resize-none border-t-2 border-[#d8cbb6] bg-white px-3 py-3 font-mono text-xs leading-5 text-[#183833] outline-none"
+                    />
+                  </details>
+                </div>
+
+                <div className="grid gap-3">
+                  <label className="grid gap-2">
+                    <span className="text-sm font-black text-[#1a5b4f]">貼上 AI JSON 結果</span>
+                    <textarea
+                      value={aiImportText}
+                      onChange={(event) => {
+                        setAiImportText(event.target.value);
+                        setAiImportMessage("");
+                      }}
+                      rows={10}
+                      placeholder='{"version":1,"items":[{"title":"Taipei 101","address":"Taipei 101","startTime":"10:00","endTime":"11:30","type":"attraction","note":"Book tickets ahead."}]}'
+                      className="resize-none border-2 border-[#d8cbb6] bg-white px-3 py-3 font-mono text-xs leading-5 text-[#183833] outline-none transition focus:border-[#1a5b4f]"
+                    />
+                  </label>
+
+                  {aiImportText.trim() && aiImportPreview.error ? (
+                    <p className="border-2 border-[#b43c2f] bg-[#fff4ef] px-3 py-2 text-sm font-black text-[#b43c2f]">
+                      {aiImportPreview.error}
+                    </p>
+                  ) : null}
+
+                  {aiImportAssignments.length > 0 ? (
+                    <div className="border-2 border-[#1a5b4f] bg-[#e9efe7] p-3">
+                      <div className="grid gap-3">
+                        <div>
+                          <p className="text-sm font-black text-[#1a5b4f]">
+                            可匯入：{selectedAiImportAssignments.length}/{aiImportAssignments.length} 筆
+                          </p>
+                          <p className="mt-1 text-xs font-bold leading-5 text-[#53635f]">
+                            {aiImportMode === "replace"
+                              ? latestAiImportItemCount > 0
+                                ? `會先移除上次 AI 匯入的 ${latestAiImportItemCount} 筆，再加入這次勾選項目。`
+                                : "目前沒有可覆蓋的 AI 匯入批次，會直接加入這次勾選項目。"
+                              : "會保留現有行程，將這次勾選項目追加到後面。"}
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 border-2 border-[#183833] bg-[#fffdf7] text-center text-xs font-black">
+                          <button
+                            type="button"
+                            onClick={() => setAiImportMode("replace")}
+                            className={`border-r-2 border-[#183833] px-3 py-2 ${
+                              aiImportMode === "replace"
+                                ? "bg-[#183833] text-white"
+                                : "text-[#183833] hover:bg-[#f1eadb]"
+                            }`}
+                          >
+                            更新上次匯入
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAiImportMode("append")}
+                            className={`px-3 py-2 ${
+                              aiImportMode === "append"
+                                ? "bg-[#183833] text-white"
+                                : "text-[#183833] hover:bg-[#f1eadb]"
+                            }`}
+                          >
+                            追加到現有行程
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSelectedAiImportItemIds(new Set(aiImportAssignments.map(({ item }) => item.id)))
+                            }
+                            className="border-2 border-[#d8cbb6] bg-white px-3 py-1.5 text-xs font-black text-[#183833] transition hover:border-[#183833]"
+                          >
+                            全選
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedAiImportItemIds(new Set())}
+                            className="border-2 border-[#d8cbb6] bg-white px-3 py-1.5 text-xs font-black text-[#183833] transition hover:border-[#b43c2f] hover:text-[#b43c2f]"
+                          >
+                            全部取消
+                          </button>
+                        </div>
+                      </div>
+                      <div className="mt-2 grid gap-2">
+                        {aiImportAssignments.map(({ item, dayOffset }) => (
+                          <label
+                            key={item.id}
+                            className={`grid cursor-pointer grid-cols-[auto_1fr] gap-3 border bg-white px-3 py-2 text-sm transition ${
+                              selectedAiImportItemIds.has(item.id)
+                                ? "border-[#1a5b4f] shadow-[2px_2px_0_#b8c8c0]"
+                                : "border-[#b8c8c0] opacity-70"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedAiImportItemIds.has(item.id)}
+                              onChange={(event) => {
+                                setSelectedAiImportItemIds((current) => {
+                                  const next = new Set(current);
+
+                                  if (event.target.checked) {
+                                    next.add(item.id);
+                                  } else {
+                                    next.delete(item.id);
+                                  }
+
+                                  return next;
+                                });
+                                setAiImportMessage("");
+                              }}
+                              className="mt-1 size-4 accent-[#1a5b4f]"
+                            />
+                            <span>
+                              <span className="block font-black">
+                                {item.startTime} - {item.endTime} · {item.title}
+                              </span>
+                              <span className="mt-1 block text-xs font-bold text-[#53635f]">
+                                {dayOffset === 0 ? "目前日期" : `後續第 ${dayOffset} 天`} ·{" "}
+                                {categoryLabels[item.type]} · {item.place?.address}
+                              </span>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {aiImportPreview.invalidRows.length > 0 ? (
+                    <div className="border-2 border-[#d9b75f] bg-[#fff7d8] p-3 text-sm text-[#6f4e00]">
+                      <p className="font-black">已略過：{aiImportPreview.invalidRows.length} 筆</p>
+                      <div className="mt-2 grid gap-1">
+                        {aiImportPreview.invalidRows.map((row) => (
+                          <p key={row.index} className="text-xs font-bold leading-5">
+                            第 {row.index + 1} 筆：{row.message}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={confirmAiItineraryImport}
+                      disabled={selectedAiImportAssignments.length === 0}
+                      className="min-h-10 border-2 border-[#183833] bg-[#183833] px-4 py-2 text-sm font-black text-white shadow-[3px_3px_0_#d9b75f] transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#d9b75f] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {aiImportMode === "replace" ? "套用更新匯入" : "追加勾選行程"}
+                    </button>
+                    {aiImportText ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAiImportText("");
+                          setAiImportMessage("");
+                        }}
+                        className="min-h-10 border-2 border-[#d8cbb6] bg-white px-4 py-2 text-sm font-black text-[#183833] transition hover:border-[#b43c2f] hover:text-[#b43c2f]"
+                      >
+                        清除
+                      </button>
+                    ) : null}
+                  </div>
+                  {aiImportMessage ? (
+                    <p className="text-sm font-black text-[#1a5b4f]">{aiImportMessage}</p>
+                  ) : null}
+                </div>
+              </div>
+            </section>
+
             {dayWarnings.length > 0 ? (
               <div className="mt-5 grid gap-3">
                 {dayWarnings.map((warning) => (
@@ -1156,9 +1523,15 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                     <div className="border-t-2 border-[#d9b75f] px-4 py-3 text-sm leading-6">
                       <p>{warning.message}</p>
                       {getWarningDetail(warning.id, trip.pace) ? (
-                        <p className="mt-2 text-xs font-bold leading-5 text-[#7c4b32]">
-                          {getWarningDetail(warning.id, trip.pace)}
-                        </p>
+                        <details className="group/tip mt-3 w-fit">
+                          <summary className="inline-flex cursor-pointer list-none border-2 border-[#d8cbb6] bg-[#fffdf7] px-3 py-2 text-xs font-black text-[#7c4b32] shadow-[2px_2px_0_#d8cbb6] marker:hidden [&::-webkit-details-marker]:hidden">
+                            <span className="group-open/tip:hidden">查看判斷方式</span>
+                            <span className="hidden group-open/tip:inline">收合判斷方式</span>
+                          </summary>
+                          <p className="mt-2 border-2 border-[#d8cbb6] bg-[#fffdf7] px-3 py-2 text-xs font-bold leading-5 text-[#7c4b32] shadow-[2px_2px_0_#d8cbb6]">
+                            {getWarningDetail(warning.id, trip.pace)}
+                          </p>
+                        </details>
                       ) : null}
                       {warning.id === "too-many-stops" || warning.id === "too-long" ? (
                         <button

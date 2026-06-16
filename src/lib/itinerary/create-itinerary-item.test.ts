@@ -141,6 +141,35 @@ describe("create itinerary item helpers", () => {
     expect(item.place?.address).toBe("台北市大安區");
     expect(item.title).toBe("午餐");
   });
+
+  it("preserves import metadata when editing an AI imported item", () => {
+    const item = createItineraryItemFromInput(
+      {
+        title: "午餐",
+        type: "food",
+        startTime: "12:00",
+        endTime: "13:00",
+        address: "台北市大安區",
+        googleMapsUrl: "",
+        note: "",
+      },
+      {
+        id: "item-ai-lunch",
+        placeId: "place-ai-lunch",
+        source: "ai_import",
+        importBatchId: "ai-batch",
+        type: "food",
+        title: "AI 午餐",
+        startTime: "12:00",
+        endTime: "13:00",
+        stayMinutes: 60,
+      },
+    );
+
+    expect(item.source).toBe("ai_import");
+    expect(item.importBatchId).toBe("ai-batch");
+  });
+
   it("clears stale place details when a Google Maps URL is updated without resolved details", () => {
     const item = createItineraryItemFromInput(
       {

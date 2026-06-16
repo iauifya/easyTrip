@@ -132,6 +132,8 @@ export function createItineraryItemFromInput(
     id,
     placeId,
     place: createPlaceFromInput(parsedInput, placeId, existingItem?.place),
+    source: existingItem?.source ?? "manual",
+    importBatchId: existingItem?.importBatchId,
     type: parsedInput.type,
     title: parsedInput.title,
     startTime: parsedInput.startTime,

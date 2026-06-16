@@ -15,6 +15,7 @@ type TripStore = {
   updateTrip: (trip: Trip) => void;
   deleteTrip: (tripId: string) => void;
   addItineraryItem: (tripId: string, dayId: string, item: ItineraryItem) => void;
+  addItineraryItems: (tripId: string, dayId: string, items: ItineraryItem[]) => void;
   updateItineraryItem: (tripId: string, dayId: string, item: ItineraryItem) => void;
   deleteItineraryItem: (tripId: string, dayId: string, itemId: string) => void;
   resetTrips: () => void;
@@ -111,6 +112,24 @@ export const useTripStore = create<TripStore>((set, get) => ({
             ...trip,
             days: trip.days.map((day) =>
               day.id === dayId ? { ...day, items: [...day.items, item] } : day,
+            ),
+          }
+        : trip,
+    );
+
+    updateTripsAndPersist(set, trips, { selectedTripId: tripId, selectedDayId: dayId });
+  },
+  addItineraryItems: (tripId, dayId, items) => {
+    if (items.length === 0) {
+      return;
+    }
+
+    const trips = get().trips.map((trip) =>
+      trip.id === tripId
+        ? {
+            ...trip,
+            days: trip.days.map((day) =>
+              day.id === dayId ? { ...day, items: [...day.items, ...items] } : day,
             ),
           }
         : trip,
