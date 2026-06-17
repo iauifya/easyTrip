@@ -1350,7 +1350,7 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                       }}
                       rows={10}
                       placeholder='{"version":1,"items":[{"title":"Taipei 101","address":"Taipei 101","startTime":"10:00","endTime":"11:30","type":"attraction","note":"Book tickets ahead."}]}'
-                      className="max-w-full resize-none overflow-x-hidden break-all border-2 border-[#d8cbb6] bg-white px-3 py-3 font-mono text-xs leading-5 text-[#183833] outline-none transition [overflow-wrap:anywhere] [word-break:break-word] focus:border-[#1a5b4f]"
+                      className="max-w-full resize-none overflow-x-hidden whitespace-normal break-all border-2 border-[#d8cbb6] bg-white px-3 py-3 font-mono text-xs leading-5 text-[#183833] outline-none transition [line-break:anywhere] [overflow-wrap:anywhere] [word-break:break-all] focus:border-[#1a5b4f]"
                     />
                   </label>
 
@@ -1448,10 +1448,10 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                               className="mt-1 size-4 accent-[#1a5b4f]"
                             />
                             <span className="min-w-0">
-                              <span className="block max-w-full break-all font-black [overflow-wrap:anywhere] [word-break:break-word]">
+                              <span className="block max-w-full whitespace-normal break-all font-black [line-break:anywhere] [overflow-wrap:anywhere] [word-break:break-all]">
                                 {item.startTime} - {item.endTime} · {item.title}
                               </span>
-                              <span className="mt-1 block max-w-full break-all text-xs font-bold text-[#53635f] [overflow-wrap:anywhere] [word-break:break-word]">
+                              <span className="mt-1 block max-w-full whitespace-normal break-all text-xs font-bold text-[#53635f] [line-break:anywhere] [overflow-wrap:anywhere] [word-break:break-all]">
                                 {dayOffset === 0 ? "目前日期" : `後續第 ${dayOffset} 天`} ·{" "}
                                 {categoryLabels[item.type]} · {item.place?.address}
                               </span>
@@ -1598,13 +1598,13 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                         <div className="min-w-0 flex-1">
                           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div className="min-w-0 flex-1 overflow-hidden">
-                              <p className="max-w-full break-all text-sm font-black text-[#1a5b4f] [overflow-wrap:anywhere] [word-break:break-word]">
+                              <p className="max-w-full whitespace-normal break-all text-sm font-black text-[#1a5b4f] [line-break:anywhere] [overflow-wrap:anywhere] [word-break:break-all]">
                                 {item.startTime} - {item.endTime} · {item.stayMinutes} 分鐘
                               </p>
-                              <h3 className="mt-1 max-w-full break-all text-2xl font-black leading-tight [hyphens:auto] [overflow-wrap:anywhere] [word-break:break-word]">
+                              <h3 className="mt-1 max-w-full whitespace-normal break-all text-2xl font-black leading-tight [hyphens:auto] [line-break:anywhere] [overflow-wrap:anywhere] [word-break:break-all]">
                                 {item.title}
                               </h3>
-                              <p className="mt-1 max-w-full break-all text-xs font-black leading-5 tracking-[0.14em] text-[#7c4b32] [hyphens:auto] [overflow-wrap:anywhere] [word-break:break-word]">
+                              <p className="mt-1 max-w-full whitespace-normal break-all text-xs font-black leading-5 tracking-normal text-[#7c4b32] [hyphens:auto] [line-break:anywhere] [overflow-wrap:anywhere] [word-break:break-all] sm:tracking-[0.14em]">
                                 {item.place?.address ??
                                   (item.place?.googleMapsUrl ? "已連結 Google Maps" : placeNotes[index] ?? "等待地點定位")}
                               </p>
@@ -1614,12 +1614,12 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                             </span>
                           </div>
                           {isTight ? (
-                            <p className="mt-3 max-w-full break-all border-2 border-[#d9b75f] bg-[#fff7d8] px-3 py-2 text-sm font-black text-[#6f4e00] [overflow-wrap:anywhere] [word-break:break-word]">
+                            <p className="mt-3 max-w-full whitespace-normal break-all border-2 border-[#d9b75f] bg-[#fff7d8] px-3 py-2 text-sm font-black text-[#6f4e00] [line-break:anywhere] [overflow-wrap:anywhere] [word-break:break-all]">
                               這站和上一站間隔太短，建議多留一點找路或排隊時間。
                             </p>
                           ) : null}
                           {item.note ? (
-                            <p className="mt-3 max-w-full break-all text-sm leading-6 text-[#53635f] [overflow-wrap:anywhere] [word-break:break-word]">
+                            <p className="mt-3 max-w-full whitespace-normal break-all text-sm leading-6 text-[#53635f] [line-break:anywhere] [overflow-wrap:anywhere] [word-break:break-all]">
                               {item.note}
                             </p>
                           ) : null}
@@ -1628,7 +1628,7 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                               href={itemGoogleMapsUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="mt-3 inline-flex max-w-full items-center justify-center break-all border-2 border-[#d8cbb6] bg-[#fffdf7] px-3 py-2 text-sm font-black text-[#1a5b4f] transition [overflow-wrap:anywhere] [word-break:break-word] hover:border-[#1a5b4f]"
+                              className="mt-3 inline-flex max-w-full items-center justify-center whitespace-normal break-all border-2 border-[#d8cbb6] bg-[#fffdf7] px-3 py-2 text-sm font-black text-[#1a5b4f] transition [line-break:anywhere] [overflow-wrap:anywhere] [word-break:break-all] hover:border-[#1a5b4f]"
                             >
                               開啟 Google Maps
                             </a>
