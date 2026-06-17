@@ -66,6 +66,13 @@ function extractJsonText(input: string) {
   return codeBlock?.[1]?.trim() ?? trimmedInput;
 }
 
+function normalizePastedJsonText(input: string) {
+  return input
+    .replace(/^\uFEFF/, "")
+    .replace(/[\u201C\u201D\u201E\u201F]/g, '"')
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'");
+}
+
 function getZodErrorMessage(error: z.ZodError) {
   return error.issues.map((issue) => issue.message).join("; ");
 }
@@ -92,15 +99,20 @@ export function parseAiItineraryImport(input: string): AiItineraryImportResult {
   }
 
   let parsed: unknown;
+  const jsonText = extractJsonText(input);
 
   try {
-    parsed = JSON.parse(extractJsonText(input));
+    parsed = JSON.parse(jsonText);
   } catch {
-    return {
-      items: [],
-      invalidRows: [],
-      error: "貼上的內容不是有效的 JSON。",
-    };
+    try {
+      parsed = JSON.parse(normalizePastedJsonText(jsonText));
+    } catch {
+      return {
+        items: [],
+        invalidRows: [],
+        error: "貼上的內容不是有效的 JSON。",
+      };
+    }
   }
 
   const payloadResult = aiImportPayloadSchema.safeParse(parsed);

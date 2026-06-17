@@ -60,6 +60,24 @@ ${JSON.stringify(payload, null, 2)}
     ]);
   });
 
+  it("parses JSON pasted with smart quotes", () => {
+    const result = parseAiItineraryImport(
+      `{“version”:1,“items”:[{“title”:“名古屋車站”,“address”:“1 Chome-1-4 Meieki, Nakamura Ward, Nagoya, Aichi, Japan”,“startTime”:“09:00”,“endTime”:“09:20”,“type”:“transport”,“note”:“抵達後先寄放行李”}]}`,
+    );
+
+    expect(result.error).toBeUndefined();
+    expect(result.invalidRows).toHaveLength(0);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({
+      title: "名古屋車站",
+      startTime: "09:00",
+      endTime: "09:20",
+      place: {
+        address: "1 Chome-1-4 Meieki, Nakamura Ward, Nagoya, Aichi, Japan",
+      },
+    });
+  });
+
   it("rejects malformed payloads", () => {
     const result = parseAiItineraryImport(JSON.stringify({ version: 1, stops: [] }));
 

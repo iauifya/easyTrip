@@ -1283,9 +1283,9 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
               </div>
             </div>
 
-            <section className="mt-5 border-2 border-[#183833] bg-[#fffdf7] p-5 shadow-[8px_8px_0_#d9b75f] sm:p-6">
-              <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
-                <div>
+            <section className="mt-5 max-w-full overflow-hidden border-2 border-[#183833] bg-[#fffdf7] p-5 shadow-[8px_8px_0_#d9b75f] sm:p-6">
+              <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+                <div className="min-w-0">
                   <p className="text-sm font-black tracking-[0.18em] text-[#b43c2f]">
                     行程匯入
                   </p>
@@ -1339,8 +1339,8 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                   </details>
                 </div>
 
-                <div className="grid gap-3">
-                  <label className="grid gap-2">
+                <div className="grid min-w-0 gap-3">
+                  <label className="grid min-w-0 gap-2">
                     <span className="text-sm font-black text-[#1a5b4f]">貼上 AI JSON 結果</span>
                     <textarea
                       value={aiImportText}
@@ -1350,7 +1350,7 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                       }}
                       rows={10}
                       placeholder='{"version":1,"items":[{"title":"Taipei 101","address":"Taipei 101","startTime":"10:00","endTime":"11:30","type":"attraction","note":"Book tickets ahead."}]}'
-                      className="resize-none border-2 border-[#d8cbb6] bg-white px-3 py-3 font-mono text-xs leading-5 text-[#183833] outline-none transition focus:border-[#1a5b4f]"
+                      className="max-w-full resize-none overflow-x-hidden break-all border-2 border-[#d8cbb6] bg-white px-3 py-3 font-mono text-xs leading-5 text-[#183833] outline-none transition [overflow-wrap:anywhere] [word-break:break-word] focus:border-[#1a5b4f]"
                     />
                   </label>
 
@@ -1361,9 +1361,9 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                   ) : null}
 
                   {aiImportAssignments.length > 0 ? (
-                    <div className="border-2 border-[#1a5b4f] bg-[#e9efe7] p-3">
-                      <div className="grid gap-3">
-                        <div>
+                    <div className="min-w-0 overflow-hidden border-2 border-[#1a5b4f] bg-[#e9efe7] p-3">
+                      <div className="grid min-w-0 gap-3">
+                        <div className="min-w-0">
                           <p className="text-sm font-black text-[#1a5b4f]">
                             可匯入：{selectedAiImportAssignments.length}/{aiImportAssignments.length} 筆
                           </p>
@@ -1375,7 +1375,7 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                               : "會保留現有行程，將這次勾選項目追加到後面。"}
                           </p>
                         </div>
-                        <div className="grid grid-cols-2 border-2 border-[#183833] bg-[#fffdf7] text-center text-xs font-black">
+                        <div className="grid min-w-0 grid-cols-2 border-2 border-[#183833] bg-[#fffdf7] text-center text-xs font-black">
                           <button
                             type="button"
                             onClick={() => setAiImportMode("replace")}
@@ -1422,7 +1422,7 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                         {aiImportAssignments.map(({ item, dayOffset }) => (
                           <label
                             key={item.id}
-                            className={`grid cursor-pointer grid-cols-[auto_1fr] gap-3 border bg-white px-3 py-2 text-sm transition ${
+                            className={`grid min-w-0 cursor-pointer grid-cols-[auto_minmax(0,1fr)] gap-3 border bg-white px-3 py-2 text-sm transition ${
                               selectedAiImportItemIds.has(item.id)
                                 ? "border-[#1a5b4f] shadow-[2px_2px_0_#b8c8c0]"
                                 : "border-[#b8c8c0] opacity-70"
@@ -1447,11 +1447,11 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                               }}
                               className="mt-1 size-4 accent-[#1a5b4f]"
                             />
-                            <span>
-                              <span className="block font-black">
+                            <span className="min-w-0">
+                              <span className="block max-w-full break-all font-black [overflow-wrap:anywhere] [word-break:break-word]">
                                 {item.startTime} - {item.endTime} · {item.title}
                               </span>
-                              <span className="mt-1 block text-xs font-bold text-[#53635f]">
+                              <span className="mt-1 block max-w-full break-all text-xs font-bold text-[#53635f] [overflow-wrap:anywhere] [word-break:break-word]">
                                 {dayOffset === 0 ? "目前日期" : `後續第 ${dayOffset} 天`} ·{" "}
                                 {categoryLabels[item.type]} · {item.place?.address}
                               </span>
@@ -1597,14 +1597,14 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-black text-[#1a5b4f]">
+                            <div className="min-w-0 flex-1 overflow-hidden">
+                              <p className="max-w-full break-all text-sm font-black text-[#1a5b4f] [overflow-wrap:anywhere] [word-break:break-word]">
                                 {item.startTime} - {item.endTime} · {item.stayMinutes} 分鐘
                               </p>
-                              <h3 className="mt-1 break-words text-2xl font-black leading-tight [overflow-wrap:anywhere]">
+                              <h3 className="mt-1 max-w-full break-all text-2xl font-black leading-tight [hyphens:auto] [overflow-wrap:anywhere] [word-break:break-word]">
                                 {item.title}
                               </h3>
-                              <p className="mt-1 break-words text-xs font-black leading-5 tracking-[0.14em] text-[#7c4b32] [overflow-wrap:anywhere]">
+                              <p className="mt-1 max-w-full break-all text-xs font-black leading-5 tracking-[0.14em] text-[#7c4b32] [hyphens:auto] [overflow-wrap:anywhere] [word-break:break-word]">
                                 {item.place?.address ??
                                   (item.place?.googleMapsUrl ? "已連結 Google Maps" : placeNotes[index] ?? "等待地點定位")}
                               </p>
@@ -1614,12 +1614,12 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                             </span>
                           </div>
                           {isTight ? (
-                            <p className="mt-3 break-words border-2 border-[#d9b75f] bg-[#fff7d8] px-3 py-2 text-sm font-black text-[#6f4e00] [overflow-wrap:anywhere]">
+                            <p className="mt-3 max-w-full break-all border-2 border-[#d9b75f] bg-[#fff7d8] px-3 py-2 text-sm font-black text-[#6f4e00] [overflow-wrap:anywhere] [word-break:break-word]">
                               這站和上一站間隔太短，建議多留一點找路或排隊時間。
                             </p>
                           ) : null}
                           {item.note ? (
-                            <p className="mt-3 break-words text-sm leading-6 text-[#53635f] [overflow-wrap:anywhere]">
+                            <p className="mt-3 max-w-full break-all text-sm leading-6 text-[#53635f] [overflow-wrap:anywhere] [word-break:break-word]">
                               {item.note}
                             </p>
                           ) : null}
@@ -1628,12 +1628,12 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                               href={itemGoogleMapsUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="mt-3 inline-flex max-w-full items-center justify-center break-words border-2 border-[#d8cbb6] bg-[#fffdf7] px-3 py-2 text-sm font-black text-[#1a5b4f] transition hover:border-[#1a5b4f] [overflow-wrap:anywhere]"
+                              className="mt-3 inline-flex max-w-full items-center justify-center break-all border-2 border-[#d8cbb6] bg-[#fffdf7] px-3 py-2 text-sm font-black text-[#1a5b4f] transition [overflow-wrap:anywhere] [word-break:break-word] hover:border-[#1a5b4f]"
                             >
                               開啟 Google Maps
                             </a>
                           ) : null}
-                          <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
+                          <div className="mt-4 grid max-w-full gap-2 sm:flex sm:flex-wrap">
                             <button
                               type="button"
                               onClick={() => startEdit(item)}
