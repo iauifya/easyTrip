@@ -1134,10 +1134,10 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
   }
 
   return (
-    <main className="min-h-screen bg-[#f6f3ea] text-[#183833]">
+    <main className="min-h-screen overflow-x-hidden bg-[#f6f3ea] text-[#183833]">
       <section className="relative overflow-hidden border-b border-[#d8cbb6] bg-[#fbf8f0]">
         <div className="absolute inset-0 opacity-80" style={taiwanWindowPattern} />
-        <div className="relative mx-auto w-full max-w-[88rem] px-5 py-6 sm:px-8 lg:px-10">
+        <div className="relative mx-auto w-full max-w-[88rem] px-3 py-6 sm:px-8 lg:px-10">
         <header className="border-b-2 border-[#1a5b4f] pb-6">
           <div className="grid gap-3 sm:flex sm:flex-wrap">
             <Link
@@ -1584,10 +1584,13 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                   return (
                     <article
                       key={item.id}
-                      className="overflow-hidden border-2 border-[#183833] bg-[#fbf8f0] p-4 shadow-[6px_6px_0_rgba(24,56,51,0.16)] sm:p-5"
+                      className="relative overflow-hidden border-2 border-[#183833] bg-[#fbf8f0] p-3 shadow-[3px_3px_0_rgba(24,56,51,0.16)] sm:p-5 sm:shadow-[6px_6px_0_rgba(24,56,51,0.16)]"
                     >
-                      <div className="flex min-w-0 gap-3 sm:gap-4">
-                        <div className="flex shrink-0 flex-col items-center">
+                      <span className="absolute right-3 top-3 grid size-7 place-items-center border-2 border-[#183833] bg-[#b43c2f] text-xs font-black text-white shadow-[1px_1px_0_#183833] sm:hidden">
+                        {index + 1}
+                      </span>
+                      <div className="flex min-w-0 gap-2 sm:gap-4">
+                        <div className="hidden shrink-0 flex-col items-center sm:flex">
                           <span className="grid size-10 place-items-center border-2 border-[#183833] bg-[#b43c2f] text-sm font-black text-white shadow-[2px_2px_0_#183833]">
                             {index + 1}
                           </span>
@@ -1595,9 +1598,9 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                             <span className="mt-2 h-full min-h-10 w-1 bg-[#1a5b4f]" />
                           ) : null}
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 overflow-hidden">
                           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                            <div className="min-w-0 flex-1 overflow-hidden">
+                            <div className="min-w-0 flex-1 overflow-hidden pr-9 sm:pr-0">
                               <p className="max-w-full whitespace-normal break-all text-sm font-black text-[#1a5b4f] [line-break:anywhere] [overflow-wrap:anywhere] [word-break:break-all]">
                                 {item.startTime} - {item.endTime} · {item.stayMinutes} 分鐘
                               </p>
@@ -1633,18 +1636,18 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                               開啟 Google Maps
                             </a>
                           ) : null}
-                          <div className="mt-4 grid max-w-full gap-2 sm:flex sm:flex-wrap">
+                          <div className="mt-4 grid w-full max-w-full gap-2 sm:flex sm:flex-wrap">
                             <button
                               type="button"
                               onClick={() => startEdit(item)}
-                              className="min-h-10 border-2 border-[#183833] bg-[#183833] px-3 py-2 text-sm font-black text-white shadow-[3px_3px_0_#d9b75f] transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#d9b75f]"
+                              className="min-h-10 min-w-0 max-w-full border-2 border-[#183833] bg-[#183833] px-3 py-2 text-sm font-black text-white shadow-[2px_2px_0_#d9b75f] transition hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0_#d9b75f] sm:shadow-[3px_3px_0_#d9b75f]"
                             >
                               編輯
                             </button>
                             <button
                               type="button"
                               onClick={() => deleteItineraryItem(tripId, dayId, item.id)}
-                              className="min-h-10 border-2 border-[#d8cbb6] bg-[#fffdf7] px-3 py-2 text-sm font-black transition hover:border-[#b43c2f] hover:text-[#b43c2f]"
+                              className="min-h-10 min-w-0 max-w-full border-2 border-[#d8cbb6] bg-[#fffdf7] px-3 py-2 text-sm font-black transition hover:border-[#b43c2f] hover:text-[#b43c2f]"
                             >
                               刪除
                             </button>
