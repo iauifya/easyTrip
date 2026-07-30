@@ -42,6 +42,8 @@ import { taiwanWindowPattern } from "@/lib/ui/taiwan-style";
 import { RoutePreview } from "@/components/route-preview";
 import { useTripStore } from "@/store/trip-store";
 import type { ItineraryItem, ItineraryItemType, TripPace } from "@/types/trip";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { getCloudTripRole } from "@/lib/collaboration/cloud-trips";
 
 const lateNightBoundaryMinutes = 20 * 60;
 const earlyMorningBoundaryMinutes = 6 * 60;
@@ -314,15 +316,21 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
   const [aiPromptMessage, setAiPromptMessage] = useState("");
   const [aiImportMode, setAiImportMode] = useState<AiImportMode>("replace");
   const [selectedAiImportItemIds, setSelectedAiImportItemIds] = useState<Set<string>>(new Set());
+  const [lastDeletedItem, setLastDeletedItem] = useState<ItineraryItem>();
+  const [cloudRole, setCloudRole] = useState<"owner" | "editor">();
   const trips = useTripStore((state) => state.trips);
   const hasHydrated = useTripStore((state) => state.hasHydrated);
   const hydrateTrips = useTripStore((state) => state.hydrateTrips);
+  const hydrateCloudTrip = useTripStore((state) => state.hydrateCloudTrip);
+  const cloudError = useTripStore((state) => state.cloudError);
+  const clearCloudError = useTripStore((state) => state.clearCloudError);
   const setSelectedTripId = useTripStore((state) => state.setSelectedTripId);
   const setSelectedDayId = useTripStore((state) => state.setSelectedDayId);
   const addItineraryItem = useTripStore((state) => state.addItineraryItem);
   const updateTrip = useTripStore((state) => state.updateTrip);
   const updateItineraryItem = useTripStore((state) => state.updateItineraryItem);
   const deleteItineraryItem = useTripStore((state) => state.deleteItineraryItem);
+  const restoreItineraryItem = useTripStore((state) => state.restoreItineraryItem);
 
   const {
     control,
@@ -342,6 +350,22 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
       hydrateTrips();
     }
   }, [hasHydrated, hydrateTrips]);
+
+  useEffect(() => {
+    if (hasHydrated) {
+      void hydrateCloudTrip(tripId);
+      void getCloudTripRole(tripId).then(setCloudRole);
+    }
+  }, [hasHydrated, hydrateCloudTrip, tripId]);
+
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) return;
+    const channel = supabase.channel(`trip-items:${tripId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "itinerary_items", filter: `trip_id=eq.${tripId}` }, () => { void hydrateCloudTrip(tripId); })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [hydrateCloudTrip, tripId]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -447,10 +471,6 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
   });
   const suggestedGooglePlaceName = !isMobileEditorOpen && googleMapsUrl ? getGoogleMapsPlaceName(googleMapsUrl) : undefined;
   const visibleGoogleMapsLookupMessage = !isMobileEditorOpen && googleMapsUrl?.trim() ? googleMapsLookupMessage : "";
-
-  useEffect(() => {
-    setSelectedAiImportItemIds(new Set(aiImportPreview.items.map((item) => item.id)));
-  }, [aiImportPreview.items]);
 
   function getDefaultTimesFromLastItem(type: ItineraryItemType = "attraction") {
     return {
@@ -1181,16 +1201,16 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                 {formatDayLabel(tripDay.date, index)}
               </Link>
             ))}
-            <button
+            {cloudRole !== "editor" ? <button
               type="button"
               onClick={() => setIsScheduleEditorOpen((isOpen) => !isOpen)}
               className="shrink-0 border-2 border-[#183833] bg-[#fffdf7] px-4 py-2 text-sm font-black shadow-[3px_3px_0_#d8cbb6] transition hover:bg-[#f1eadb]"
             >
               {isScheduleEditorOpen ? "收合日期設定" : "編輯出發日期"}
-            </button>
+            </button> : null}
           </div>
 
-          {isScheduleEditorOpen ? (
+          {isScheduleEditorOpen && cloudRole !== "editor" ? (
             <form
               key={`${trip.id}-${trip.startDate}-${trip.days.length}`}
               onSubmit={updateSchedule}
@@ -1244,6 +1264,8 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
             <p className="mt-3 text-sm font-black text-[#1a5b4f]">{scheduleMessage}</p>
           ) : null}
         </header>
+        {cloudError ? <div className="mt-4 flex flex-col gap-3 border-2 border-[#b43c2f] bg-[#fff4ef] p-3 text-sm font-black text-[#b43c2f] sm:flex-row sm:items-center sm:justify-between"><span>{cloudError}</span><button type="button" onClick={() => { clearCloudError(); void hydrateCloudTrip(tripId); }} className="border-2 border-[#b43c2f] px-3 py-1">重新載入</button></div> : null}
+        {lastDeletedItem ? <div className="mt-4 flex items-center justify-between gap-3 border-2 border-[#1a5b4f] bg-[#e9efe7] p-3 text-sm font-black text-[#1a5b4f]"><span>已刪除「{lastDeletedItem.title}」</span><button type="button" onClick={() => { restoreItineraryItem(tripId, dayId, lastDeletedItem); setLastDeletedItem(undefined); }} className="border-2 border-[#1a5b4f] px-3 py-1">復原</button></div> : null}
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_420px]">
           <section>
@@ -1345,7 +1367,9 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                     <textarea
                       value={aiImportText}
                       onChange={(event) => {
-                        setAiImportText(event.target.value);
+                        const nextText = event.target.value;
+                        setAiImportText(nextText);
+                        setSelectedAiImportItemIds(new Set(parseAiItineraryImport(nextText).items.map((item) => item.id)));
                         setAiImportMessage("");
                       }}
                       rows={10}
@@ -1646,7 +1670,7 @@ export function ItineraryDayPlanner({ tripId, dayId }: { tripId: string; dayId: 
                             </button>
                             <button
                               type="button"
-                              onClick={() => deleteItineraryItem(tripId, dayId, item.id)}
+                              onClick={() => { setLastDeletedItem(item); deleteItineraryItem(tripId, dayId, item.id); }}
                               className="min-h-10 min-w-0 max-w-full border-2 border-[#d8cbb6] bg-[#fffdf7] px-3 py-2 text-sm font-black transition hover:border-[#b43c2f] hover:text-[#b43c2f]"
                             >
                               刪除

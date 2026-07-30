@@ -138,6 +138,17 @@ Then open:
 http://localhost:3000
 ```
 
+## Authentication and Collaboration
+
+Local-only planning still works without an account. Shared trips use Supabase Auth (Google OAuth or Email Magic Link), invite links, a proposal pool, three-state reactions, optional limited must-go cards, and collaborative itinerary editing.
+
+1. Create a Supabase project and enable Email and Google providers.
+2. Add local and production `/auth/callback` URLs to the allowed redirects.
+3. Run `supabase/migrations/202607140001_collaboration_mvp.sql` in the SQL Editor.
+4. Copy `.env.example` to `.env.local` and fill in the Supabase and Maps keys.
+
+Never expose `SUPABASE_SERVICE_ROLE_KEY` to the browser. A local trip is uploaded only after its owner explicitly selects **旅伴候選池** from the trip list.
+
 ## Google Maps Behavior
 
 EasyTrip treats a Google Maps URL as the main place source.

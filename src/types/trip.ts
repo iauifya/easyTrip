@@ -18,6 +18,7 @@ export type Trip = {
   endDate: string;
   pace: TripPace;
   days: TripDay[];
+  cloudVersion?: number;
 };
 
 export type TripDay = {
@@ -38,6 +39,8 @@ export type ItineraryItem = {
   endTime: string;
   stayMinutes: number;
   note?: string;
+  version?: number;
+  deletedAt?: string;
 };
 
 export type Place = {

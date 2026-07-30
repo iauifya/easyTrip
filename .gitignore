@@ -1,5 +1,6 @@
 # dependencies
 node_modules
+.pnpm-store
 
 # next.js
 .next
@@ -25,6 +26,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# local Supabase CLI state
+supabase/.temp/
 
 # system
 .DS_Store

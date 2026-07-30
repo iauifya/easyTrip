@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { paceLabels } from "@/lib/trips/labels";
 import { hasTodayTripDay } from "@/lib/trips/today";
 import {
@@ -12,6 +12,7 @@ import {
 } from "@/lib/ui/taiwan-style";
 import { useTripStore } from "@/store/trip-store";
 import type { Trip } from "@/types/trip";
+import { syncTripToCloud } from "@/app/collaboration/actions";
 
 function formatDateRange(trip: Trip) {
   if (trip.startDate === trip.endDate) {
@@ -37,6 +38,8 @@ export function TripsList() {
   const hasHydrated = useTripStore((state) => state.hasHydrated);
   const hydrateTrips = useTripStore((state) => state.hydrateTrips);
   const setSelectedTripId = useTripStore((state) => state.setSelectedTripId);
+  const [syncingTripId, setSyncingTripId] = useState("");
+  const [cloudMessage, setCloudMessage] = useState("");
 
   useEffect(() => {
     if (!hasHydrated) {
@@ -47,6 +50,22 @@ export function TripsList() {
   function openTrip(tripId: string) {
     setSelectedTripId(tripId);
     router.push("/");
+  }
+
+  async function openSharedIdeas(trip: Trip) {
+    setSyncingTripId(trip.id);
+    setCloudMessage("");
+    const result = await syncTripToCloud(trip);
+    setSyncingTripId("");
+    if (!result.ok) {
+      if (result.error === "請先登入。") {
+        router.push(`/auth?next=${encodeURIComponent(`/trips/${trip.id}/ideas`)}`);
+        return;
+      }
+      setCloudMessage(result.error);
+      return;
+    }
+    router.push(`/trips/${trip.id}/ideas`);
   }
 
   return (
@@ -78,6 +97,7 @@ export function TripsList() {
           </div>
         </header>
 
+        {cloudMessage ? <p className="mt-5 border-2 border-[#b43c2f] bg-[#fff4ef] px-4 py-3 text-sm font-black text-[#b43c2f]">{cloudMessage}</p> : null}
         <div className="mt-6 grid gap-4">
           {trips.map((trip) => {
             const stats = getTripStats(trip);
@@ -133,6 +153,14 @@ export function TripsList() {
                   >
                     編輯行程
                   </Link>
+                  <button
+                    type="button"
+                    onClick={() => openSharedIdeas(trip)}
+                    disabled={syncingTripId === trip.id}
+                    className={`${taiwanButton} disabled:cursor-wait disabled:opacity-60`}
+                  >
+                    {syncingTripId === trip.id ? "同步中…" : "旅伴候選池"}
+                  </button>
                   {canOpenTodayMode ? (
                     <Link
                       href={`/trips/${trip.id}/today`}

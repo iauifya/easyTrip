@@ -136,6 +136,35 @@ npm run dev
 http://localhost:3000
 ```
 
+## 登入與多人協作設定
+
+EasyTrip 保留未登入的本機模式；登入後可將指定旅程同步到 Supabase，使用邀請連結、候選地點、三態表態、有限必去卡與正式行程共編。
+
+1. 建立 Supabase project。
+2. 在 Authentication 啟用 Email 登入連結（Supabase 控制台中的 Magic Link）與 Google provider。
+3. 將本機與正式站的 `/auth/callback` 加入 Auth redirect URLs。
+4. 在 SQL Editor 執行 `supabase/migrations/202607140001_collaboration_mvp.sql`。
+5. 依 `.env.example` 建立 `.env.local`：
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_publishable_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+GOOGLE_MAPS_API_KEY=your_google_maps_key
+```
+
+`SUPABASE_SERVICE_ROLE_KEY` 只能存在伺服器環境，不可加上 `NEXT_PUBLIC_` 前綴。正式環境的 OAuth callback 應設為 `https://your-domain/auth/callback`。
+
+協作入口：
+
+```text
+/auth
+/join/:token
+/trips/:tripId/ideas
+```
+
+主辦人從旅程列表點擊「旅伴候選池」時才會同步該趟旅程，不會自動上傳其他本機資料。
+
 ## Google Maps 行為
 
 EasyTrip 會將 Google Maps URL 視為主要地點來源。
